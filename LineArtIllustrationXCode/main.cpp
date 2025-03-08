@@ -533,6 +533,9 @@ using namespace std::chrono_literals;
 
 int main()
 {
+    // XCode bug: instance duplication occurs when below code removed.
+    // IDK the reason why it works but, you have to wait for 1 second. not even 500ms.
+    // From: https://developer.apple.com/forums/thread/765445
     std::this_thread::sleep_for(1000ms);
     
     // init
