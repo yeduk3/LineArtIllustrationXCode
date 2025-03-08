@@ -111,7 +111,7 @@ void ObjData::loadObject(const std::string &objFileName) {
         // std::cout << "Processing type " << type << std::endl;
     }
 
-    this->nVertices = this->vertices.size();
+    this->nVertices = (int)this->vertices.size();
 
     std::vector<std::vector<glm::vec3>> sNormals(this->nVertices);
 
@@ -155,10 +155,10 @@ void ObjData::loadObject(const std::string &objFileName) {
         this->syncedNormals.push_back(sum);
     }
 
-    this->nElements3 = this->elements3.size();
-    this->nElements4 = this->elements4.size();
-    this->nNormals = this->normals.size();
-    this->nSyncedNormals = this->syncedNormals.size();
+    this->nElements3 = (int)this->elements3.size();
+    this->nElements4 = (int)this->elements4.size();
+    this->nNormals = (int)this->normals.size();
+    this->nSyncedNormals = (int)this->syncedNormals.size();
 
     std::cout << "nVertices: " << this->nVertices << std::endl;
     std::cout << "nElements3: " << this->nElements3 << std::endl;

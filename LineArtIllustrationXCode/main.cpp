@@ -10,6 +10,8 @@
 #include <OpenGL/gl.h>
 
 #include <iostream>
+#include <thread>
+#include <chrono>
 
 #include "myprogram.hpp"
 #include "objreader.hpp"
@@ -72,7 +74,7 @@ float quadVertices[] = {
     -1.0f, 1.0f, 0.0f, 1.0f,
     -1.0f, -1.0f, 0.0f, 0.0f,
     1.0f, -1.0f, 1.0f, 0.0f,
-
+    
     -1.0f, 1.0f, 0.0f, 1.0f,
     1.0f, -1.0f, 1.0f, 0.0f,
     1.0f, 1.0f, 1.0f, 1.0f};
@@ -110,14 +112,14 @@ float cameraTheta(0), cameraPhi(0);
 
 namespace comparator
 {
-    float min(const float &a, const float &b)
-    {
-        return a > b ? b : a;
-    }
-    float max(const float &a, const float &b)
-    {
-        return a > b ? a : b;
-    }
+float min(const float &a, const float &b)
+{
+    return a > b ? b : a;
+}
+float max(const float &a, const float &b)
+{
+    return a > b ? a : b;
+}
 }
 
 void cursorPosCallback(GLFWwindow *window, double xpos, double ypos)
@@ -209,103 +211,103 @@ void keyCallback(GLFWwindow *window, int key, int scancode, int action, int mods
 void pdInit(GLFWwindow *window)
 {
     obj.loadObject("obj", "teapot.obj");
-
+    
     //
     // Normal & Position program
     //
-
+    
     std::cout << "--- Normal & Position Program Init ---\n";
-
+    
     normalPositionProgram.loadShader("normalPosition.vert", "normalPosition.frag");
     glUseProgram(normalPositionProgram.programID);
-
+    
     glGenVertexArrays(1, &normalVAO);
     glBindVertexArray(normalVAO);
-
+    
     glGBDArrayBuffer(GL_ARRAY_BUFFER, &positionVBO, sizeof(glm::vec3) * obj.nVertices, obj.vertices.data());
-
+    
     glEnableVertexAttribArray(0);
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), 0);
-
+    
     glGBDArrayBuffer(GL_ARRAY_BUFFER, &normalVBO, sizeof(glm::vec3) * obj.nSyncedNormals, obj.syncedNormals.data());
-
+    
     glEnableVertexAttribArray(1);
     glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), 0);
-
+    
     glGBDArrayBuffer(GL_ELEMENT_ARRAY_BUFFER, &vertexElement, sizeof(glm::u16vec3) * obj.nElements3, obj.elements3.data());
-
+    
     // framebuffer
-
+    
     int w, h;
     glfwGetFramebufferSize(window, &w, &h);
-
+    
     glGenFramebuffers(1, &normalPositionFB);
     glBindFramebuffer(GL_FRAMEBUFFER, normalPositionFB);
-
+    
     glGBIPTexture2D(&normalTexture, w, h);
     glGBIPTexture2D(&positionTexture, w, h);
-
+    
     // each attachment are mapped into `layout(location = ?) out ~~`
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, normalTexture, 0);
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D, positionTexture, 0);
     // `glDrawBuffers` set the buffer list to be drawn
     glDrawBuffers(2, norposTexDrawBuffers);
-
+    
     glGenRenderbuffers(1, &renderBufferobject);
     glBindRenderbuffer(GL_RENDERBUFFER, renderBufferobject);
     glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, w, h);
-
+    
     glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, renderBufferobject);
-
+    
     if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
         std::cout << "ERROR::FRAMEBUFFER:: Framebuffer is not complete!" << std::endl;
-
+    
     //
     // umbilic unsolved principal direction
     //
     std::cout << "--- Principal Direction Program Init ---\n";
-
+    
     pdProgram.loadShader("pd.vert", "pd.frag");
     glUseProgram(pdProgram.programID);
-
+    
     glGenFramebuffers(1, &pdFB);
     glBindFramebuffer(GL_FRAMEBUFFER, pdFB);
-
+    
     glGBIPTexture2D(&pdTexture, w, h);
-
+    
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT2, GL_TEXTURE_2D, pdTexture, 0);
     glDrawBuffers(1, pdTexDrawBuffers);
-
+    
     if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
         std::cout << "ERROR::FRAMEBUFFER:: Framebuffer is not complete!" << std::endl;
-
+    
     //
     // try to solve umbilic points - uncompleted
     //
     std::cout << "--- Umbilic Solver Program Init ---\n";
-
+    
     usProgram.loadShader("umbolicSolver.vert", "umbolicSolver.frag");
     glUseProgram(usProgram.programID);
-
+    
     glGenFramebuffers(1, &usFB);
     glBindFramebuffer(GL_FRAMEBUFFER, usFB);
-
+    
     glGBIPTexture2D(&usTexture, w, h);
-
+    
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT3, GL_TEXTURE_2D, usTexture, 0);
     glDrawBuffers(1, usTexDrawBuffers);
-
+    
     if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
         std::cout << "ERROR::FRAMEBUFFER:: Framebuffer is not complete!" << std::endl;
-
+    
     //
     // smooth direction
     //
     std::cout << "--- Smooth Direction Program Init ---\n";
-
+    
     sdProgram.loadShader("smoothingPD.vert", "smoothingPD.frag");
     glUseProgram(sdProgram.programID);
-
+    
     glGenFramebuffers(SMOOTHING_COUNT, sdFB);
     GLint maxAttach;
     glGetIntegerv(GL_MAX_COLOR_ATTACHMENTS, &maxAttach);
@@ -319,37 +321,37 @@ void pdInit(GLFWwindow *window)
     for (int i = 0; i < SMOOTHING_COUNT; i++)
     {
         glBindFramebuffer(GL_FRAMEBUFFER, sdFB[i]);
-
+        
         GLenum attach[1];
         attach[0] = GL_COLOR_ATTACHMENT4 + i % 2;
         glFramebufferTexture2D(GL_FRAMEBUFFER, attach[0], GL_TEXTURE_2D, sdTexture[i % 2], 0);
         glDrawBuffers(1, attach);
-
+        
         if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
             std::cout << "ERROR::FRAMEBUFFER " << i << "-th:: Framebuffer is not complete! Code " << glCheckFramebufferStatus(GL_FRAMEBUFFER) << std::endl;
     }
-
+    
     //
     // test
     //
     std::cout << "--- Test Program Init ---\n";
-
+    
     quadProgram.loadShader("quad.vert", "quad.frag");
-
+    
     //
     // quads
     //
-
+    
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
-
+    
     glGenVertexArrays(1, &quadVAO);
     glBindVertexArray(quadVAO);
-
+    
     glGBDArrayBuffer(GL_ARRAY_BUFFER, &quadVBO, 24 * sizeof(float), quadVertices);
-
+    
     glEnableVertexAttribArray(0);
     glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), 0);
-
+    
     glEnableVertexAttribArray(1);
     glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void *)(2 * sizeof(float)));
 }
@@ -360,73 +362,73 @@ void pdInit(GLFWwindow *window)
 
 void pdRender(GLFWwindow *window)
 {
-
+    
     glm::mat4 modelMat = glm::mat4({{1, 0, 0, 0},
-                                    {0, 1, 0, 0},
-                                    {0, 0, 1, 0},
-                                    {0, -1.5, 0, 1}});
+        {0, 1, 0, 0},
+        {0, 0, 1, 0},
+        {0, -1.5, 0, 1}});
     // modelMat = glm::scale(glm::vec3(0.01)) * modelMat;
     glm::mat4 rotateX = glm::rotate(cameraPhi, glm::vec3(1, 0, 0));
     glm::mat4 rotateY = glm::rotate(cameraTheta, glm::vec3(0, 1, 0));
     glm::vec3 eye(0, 0, 5);
     glm::vec3 eyePosition = rotateY * rotateX * glm::vec4(eye, 1);
     glm::mat4 viewMat = glm::lookAt(eyePosition, glm::vec3(0, 0, 0), glm::vec3(0, 1, 0));
-
+    
     int w, h;
     glfwGetFramebufferSize(window, &w, &h);
     glm::mat4 projMat = glm::perspective(60 / (float)180 * PI, w / (float)h, 0.01f, 1000.0f);
-
+    
     //
     // Normal & Position texture render
     //
-
+    
     glUseProgram(normalPositionProgram.programID);
-
+    
     glBindFramebuffer(GL_FRAMEBUFFER, normalPositionFB);
     glBindVertexArray(normalVAO);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, vertexElement);
-
+    
     glViewport(0, 0, w, h);
-
+    
     glClearColor(0.0, 0.0, 0.0, 0.0);
     glEnable(GL_DEPTH_TEST);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
+    
     GLuint modelMatLoc = glGetUniformLocation(normalPositionProgram.programID, "modelMat");
     GLuint viewMatLoc = glGetUniformLocation(normalPositionProgram.programID, "viewMat");
     GLuint projMatLoc = glGetUniformLocation(normalPositionProgram.programID, "projMat");
     glUniformMatrix4fv(modelMatLoc, 1, GL_FALSE, glm::value_ptr(modelMat));
     glUniformMatrix4fv(viewMatLoc, 1, GL_FALSE, glm::value_ptr(viewMat));
     glUniformMatrix4fv(projMatLoc, 1, GL_FALSE, glm::value_ptr(projMat));
-
+    
     glDrawElements(GL_TRIANGLES, obj.nElements3 * 3, GL_UNSIGNED_SHORT, 0);
-
+    
     //
     // Principal Direction 1 render
     //
-
+    
     glUseProgram(pdProgram.programID);
-
+    
     glBindFramebuffer(GL_FRAMEBUFFER, pdFB);
     glBindVertexArray(quadVAO);
-
+    
     glViewport(0, 0, w, h);
-
+    
     glClearColor(0.0, 0.0, 0.0, 0.0);
     glClear(GL_COLOR_BUFFER_BIT);
     glDisable(GL_DEPTH_TEST);
-
+    
     // value below (0 and 1) is same with GL_TEXTURE{value}
     GLuint normTexLoc = glGetUniformLocation(pdProgram.programID, "normalTexture");
     glUniform1i(normTexLoc, 0);
     GLuint posTexLoc = glGetUniformLocation(pdProgram.programID, "positionTexture");
     glUniform1i(posTexLoc, 1);
-
+    
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, normalTexture);
     glActiveTexture(GL_TEXTURE1);
     glBindTexture(GL_TEXTURE_2D, positionTexture);
-
+    
     // test values
     GLuint OFFSETLoc = glGetUniformLocation(pdProgram.programID, "OFFSET");
     glUniform1f(OFFSETLoc, testOffset);
@@ -434,82 +436,92 @@ void pdRender(GLFWwindow *window)
     glUniform1i(enableCaseTestLoc, enableCaseTest);
     GLuint closeToZeroLoc = glGetUniformLocation(pdProgram.programID, "CLOSETOZERO");
     glUniform1f(closeToZeroLoc, testCloseToZero);
-
+    
     glDrawArrays(GL_TRIANGLES, 0, 6);
-
+    
     //
     // umbolic solver render
     //
-
+    
     glUseProgram(usProgram.programID);
-
+    
     glBindFramebuffer(GL_FRAMEBUFFER, usFB);
     glBindVertexArray(quadVAO);
-
+    
     glViewport(0, 0, w, h);
-
+    
     glClearColor(0.0, 0.0, 0.0, 0.0);
     glClear(GL_COLOR_BUFFER_BIT);
-
+    
     GLuint pdTextureLoc = glGetUniformLocation(usProgram.programID, "pdTexture");
     glUniform1i(pdTextureLoc, 2);
     glActiveTexture(GL_TEXTURE2);
     glBindTexture(GL_TEXTURE_2D, pdTexture);
-
+    
     enableCaseTestLoc = glGetUniformLocation(usProgram.programID, "enableCaseTest");
     glUniform1i(enableCaseTestLoc, enableCaseTest);
-
+    
     glDrawArrays(GL_TRIANGLES, 0, 6);
-
+    
     //
     // smoothing pd
     //
-
+    
     glUseProgram(sdProgram.programID);
-
+    
+    GLuint index = glGetSubroutineUniformLocation(sdProgram.programID, GL_FRAGMENT_SHADER, "renderPass");
+    if (index == -1)
+    {
+        std::cout << "Subroutine indexing error" << std::endl;
+        return;
+    }
+    
+    GLuint pass2 = glGetSubroutineIndex(sdProgram.programID, GL_FRAGMENT_SHADER, "pass2");
+    glUniformSubroutinesuiv(GL_FRAGMENT_SHADER, 1, &pass2);
+    
     for (int i = 0; i < sdCount; i++)
     {
         glBindFramebuffer(GL_FRAMEBUFFER, sdFB[i]);
         glBindVertexArray(quadVAO);
-
+        
         glViewport(0, 0, w, h);
-
+        
         glClearColor(0.0, 0.0, 0.0, 0.0);
         glClear(GL_COLOR_BUFFER_BIT);
-
+        
         GLuint testTexLoc = glGetUniformLocation(sdProgram.programID, "tex");
         glUniform1i(testTexLoc, 3 + i % 2);
         glActiveTexture(GL_TEXTURE3 + i % 2);
         GLuint tex = i == 0 ? usTexture : sdTexture[(i - 1) % 2];
         glBindTexture(GL_TEXTURE_2D, tex);
-
+        
         GLuint positionTexLoc = glGetUniformLocation(sdProgram.programID, "positionTex");
         glUniform1i(positionTexLoc, 0);
-
+        
         GLuint inverseSizeLoc = glGetUniformLocation(sdProgram.programID, "inverseSize");
         glm::vec2 inverseSize(1 / (float)w, 1 / (float)h);
         glUniform2fv(inverseSizeLoc, 1, glm::value_ptr(inverseSize));
-
+        
         glDrawArrays(GL_TRIANGLES, 0, 6);
     }
-
+    
     glUseProgram(quadProgram.programID);
-
+    
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
     glBindVertexArray(quadVAO);
-
+    
     glViewport(0, 0, w, h);
-
+    
     glClearColor(0.0, 0.0, 0.0, 0.0);
     glClear(GL_COLOR_BUFFER_BIT);
-
+    
     GLuint quadTexLoc = glGetUniformLocation(quadProgram.programID, "tex");
     glUniform1i(quadTexLoc, 5);
     glActiveTexture(GL_TEXTURE5);
     glBindTexture(GL_TEXTURE_2D, sdTexture[(sdCount - 1) % 2]);
-
+    
     glDrawArrays(GL_TRIANGLES, 0, 6);
-
+    
     glfwSwapBuffers(window);
 }
 
@@ -517,51 +529,54 @@ void pdRender(GLFWwindow *window)
 // main
 //
 
+using namespace std::chrono_literals;
+
 int main()
 {
-
+    std::this_thread::sleep_for(1000ms);
+    
     // init
-
+    
     if (!glfwInit())
     {
         std::cout << "GLFW Init Failed" << std::endl;
         return -1;
     }
-
-// MacOS Setting
+    
+    // MacOS Setting
 #ifdef __APPLE__
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 1);
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 #endif
-
+    
     GLFWwindow *window = glfwCreateWindow(640, 480, "Line Art Illustration", 0, 0);
     glfwMakeContextCurrent(window);
-
+    
     if (glewInit() != GLEW_OK)
     {
         std::cout << "GLEW Init Failed" << std::endl;
         return -1;
     }
-
+    
     // init(window);
     pdInit(window);
-
+    
     glfwSetCursorPosCallback(window, cursorPosCallback);
     glfwSetKeyCallback(window, keyCallback);
-
+    
     // render
-
+    
     while (!glfwWindowShouldClose(window))
     {
         // render(window);
         pdRender(window);
         glfwPollEvents();
     }
-
+    
     glfwDestroyWindow(window);
     glfwTerminate();
-
+    
     return 0;
 }

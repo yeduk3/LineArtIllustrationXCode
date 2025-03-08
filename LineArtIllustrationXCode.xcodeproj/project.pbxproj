@@ -7,11 +7,11 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		5568C45E2D7AEB4C00244D41 /* OpenGL.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 5568C45C2D7AE60900244D41 /* OpenGL.framework */; };
 		5568C4842D7C8E6F00244D41 /* libglfw.3.4.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 5568C4632D7AEBE300244D41 /* libglfw.3.4.dylib */; };
 		5568C4852D7C8E6F00244D41 /* libglfw.3.4.dylib in Embed Libraries */ = {isa = PBXBuildFile; fileRef = 5568C4632D7AEBE300244D41 /* libglfw.3.4.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
-		5568C4872D7C8E7C00244D41 /* libGLEW.2.2.0.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 5568C45F2D7AEBD000244D41 /* libGLEW.2.2.0.dylib */; };
-		5568C4882D7C8E7C00244D41 /* libGLEW.2.2.0.dylib in Embed Libraries */ = {isa = PBXBuildFile; fileRef = 5568C45F2D7AEBD000244D41 /* libGLEW.2.2.0.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
+		5568C48B2D7CA40600244D41 /* OpenGL.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 5568C45C2D7AE60900244D41 /* OpenGL.framework */; settings = {ATTRIBUTES = (Required, ); }; };
+		5568C48F2D7CA8A500244D41 /* libGLEW.2.2.0.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 5568C45F2D7AEBD000244D41 /* libGLEW.2.2.0.dylib */; };
+		5568C4902D7CA8A500244D41 /* libGLEW.2.2.0.dylib in Embed Libraries */ = {isa = PBXBuildFile; fileRef = 5568C45F2D7AEBD000244D41 /* libGLEW.2.2.0.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -26,12 +26,12 @@
 		};
 		5568C4862D7C8E6F00244D41 /* Embed Libraries */ = {
 			isa = PBXCopyFilesBuildPhase;
-			buildActionMask = 2147483647;
+			buildActionMask = 12;
 			dstPath = "";
 			dstSubfolderSpec = 10;
 			files = (
 				5568C4852D7C8E6F00244D41 /* libglfw.3.4.dylib in Embed Libraries */,
-				5568C4882D7C8E7C00244D41 /* libGLEW.2.2.0.dylib in Embed Libraries */,
+				5568C4902D7CA8A500244D41 /* libGLEW.2.2.0.dylib in Embed Libraries */,
 			);
 			name = "Embed Libraries";
 			runOnlyForDeploymentPostprocessing = 0;
@@ -58,9 +58,9 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				5568C45E2D7AEB4C00244D41 /* OpenGL.framework in Frameworks */,
-				5568C4872D7C8E7C00244D41 /* libGLEW.2.2.0.dylib in Frameworks */,
 				5568C4842D7C8E6F00244D41 /* libglfw.3.4.dylib in Frameworks */,
+				5568C48F2D7CA8A500244D41 /* libGLEW.2.2.0.dylib in Frameworks */,
+				5568C48B2D7CA40600244D41 /* OpenGL.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -199,6 +199,7 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_HARDENED_RUNTIME = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
@@ -217,14 +218,14 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				HEADER_SEARCH_PATHS = (
-					/opt/homebrew/Cellar/glew/2.2.0_1/include/,
-					/opt/homebrew/Cellar/glm/1.0.1/include/,
-					/opt/homebrew/Cellar/glfw/3.4/include/,
+					/opt/homebrew/opt/glew/include/,
+					/opt/homebrew/opt/glm/include/,
+					/opt/homebrew/opt/glfw/include/,
 				);
 				LIBRARY_SEARCH_PATHS = (
-					/opt/homebrew/Cellar/glfw/3.4/lib/,
-					/opt/homebrew/Cellar/glew/2.2.0_1/lib/,
-					/opt/homebrew/Cellar/glm/1.0.1/lib/,
+					/opt/homebrew/opt/glfw/lib/,
+					/opt/homebrew/opt/glew/lib/,
+					/opt/homebrew/opt/glm/lib/,
 				);
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 				MACOSX_DEPLOYMENT_TARGET = 15.2;
@@ -268,6 +269,7 @@
 				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_INJECT_BASE_ENTITLEMENTS = NO;
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				ENABLE_NS_ASSERTIONS = NO;
@@ -282,14 +284,14 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				HEADER_SEARCH_PATHS = (
-					/opt/homebrew/Cellar/glew/2.2.0_1/include/,
-					/opt/homebrew/Cellar/glm/1.0.1/include/,
-					/opt/homebrew/Cellar/glfw/3.4/include/,
+					/opt/homebrew/opt/glew/include/,
+					/opt/homebrew/opt/glm/include/,
+					/opt/homebrew/opt/glfw/include/,
 				);
 				LIBRARY_SEARCH_PATHS = (
-					/opt/homebrew/Cellar/glfw/3.4/lib/,
-					/opt/homebrew/Cellar/glew/2.2.0_1/lib/,
-					/opt/homebrew/Cellar/glm/1.0.1/lib/,
+					/opt/homebrew/opt/glfw/lib/,
+					/opt/homebrew/opt/glew/lib/,
+					/opt/homebrew/opt/glm/lib/,
 				);
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 				MACOSX_DEPLOYMENT_TARGET = 15.2;
@@ -302,30 +304,28 @@
 		5568C4592D7AE5F900244D41 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = 488U7L9D53;
-				ENABLE_HARDENED_RUNTIME = YES;
 				LIBRARY_SEARCH_PATHS = (
-					"$(inherited)",
-					/opt/homebrew/Cellar/glew/2.2.0_1/lib,
-					/opt/homebrew/Cellar/glfw/3.4/lib,
+					/opt/homebrew/opt/glew/lib,
+					/opt/homebrew/opt/glfw/lib,
 				);
-				PRODUCT_NAME = "$(TARGET_NAME)";
+				PRODUCT_NAME = LineArtIllustrationXCode;
 			};
 			name = Debug;
 		};
 		5568C45A2D7AE5F900244D41 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = 488U7L9D53;
-				ENABLE_HARDENED_RUNTIME = YES;
 				LIBRARY_SEARCH_PATHS = (
-					"$(inherited)",
-					/opt/homebrew/Cellar/glew/2.2.0_1/lib,
-					/opt/homebrew/Cellar/glfw/3.4/lib,
+					/opt/homebrew/opt/glew/lib,
+					/opt/homebrew/opt/glfw/lib,
 				);
-				PRODUCT_NAME = "$(TARGET_NAME)";
+				PRODUCT_NAME = LineArtIllustrationXCode;
 			};
 			name = Release;
 		};
