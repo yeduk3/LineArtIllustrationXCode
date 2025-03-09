@@ -32,10 +32,15 @@ GLuint normalVAO;
 GLuint positionVBO, normalVBO;
 GLuint vertexElement;
 
-GLuint normalPositionFB;
-GLuint normalTexture, positionTexture;
-GLenum norposTexDrawBuffers[2] = {GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1};
+GLuint normalFB, positionFB, edgeFB;
+GLuint normalTexture, positionTexture, edgeTexture;
+GLenum norposTexDrawBuffers[3] = {
+    GL_COLOR_ATTACHMENT0,
+    GL_COLOR_ATTACHMENT1,
+    GL_COLOR_ATTACHMENT6
+};
 GLuint renderBufferobject;
+float edgeThreshold = 0.01f;
 
 // pd: umbilic unsolved
 GLuint pdFB;
@@ -150,6 +155,8 @@ bool enableCaseTest = false;
 float testCloseToZero = 0.0005;
 float testCloseToZeroDelta = 0.0001;
 
+bool doSmoothing = true;
+
 void keyCallback(GLFWwindow *window, int key, int scancode, int action, int mods)
 {
     if (key == GLFW_KEY_RIGHT && action > GLFW_RELEASE)
@@ -176,35 +183,15 @@ void keyCallback(GLFWwindow *window, int key, int scancode, int action, int mods
         testCloseToZero = comparator::min(0.1, comparator::max(0, testCloseToZero - testCloseToZeroDelta));
         std::cout << "CloseToZero: " << testCloseToZero << std::endl;
     }
-    else if (key == GLFW_KEY_1 && action == GLFW_PRESS)
-    {
-        sdCount = 1;
-        std::cout << "sdCount: " << sdCount << std::endl;
+    else if (GLFW_KEY_1 <= key && key <= GLFW_KEY_6) {
+        if(action == GLFW_PRESS) {
+            sdCount = key - GLFW_KEY_0;
+            std::cout << "sdCount: " << sdCount << std::endl;
+        }
     }
-    else if (key == GLFW_KEY_2 && action == GLFW_PRESS)
-    {
-        sdCount = 2;
-        std::cout << "sdCount: " << sdCount << std::endl;
-    }
-    else if (key == GLFW_KEY_3 && action == GLFW_PRESS)
-    {
-        sdCount = 3;
-        std::cout << "sdCount: " << sdCount << std::endl;
-    }
-    else if (key == GLFW_KEY_4 && action == GLFW_PRESS)
-    {
-        sdCount = 4;
-        std::cout << "sdCount: " << sdCount << std::endl;
-    }
-    else if (key == GLFW_KEY_5 && action == GLFW_PRESS)
-    {
-        sdCount = 5;
-        std::cout << "sdCount: " << sdCount << std::endl;
-    }
-    else if (key == GLFW_KEY_6 && action == GLFW_PRESS)
-    {
-        sdCount = 6;
-        std::cout << "sdCount: " << sdCount << std::endl;
+    else if (key == GLFW_KEY_E && action == GLFW_PRESS) {
+        doSmoothing = !doSmoothing;
+        std::cout << "doSmoothing: " << doSmoothing << std::endl;
     }
 }
 
@@ -241,17 +228,19 @@ void pdInit(GLFWwindow *window)
     int w, h;
     glfwGetFramebufferSize(window, &w, &h);
     
-    glGenFramebuffers(1, &normalPositionFB);
-    glBindFramebuffer(GL_FRAMEBUFFER, normalPositionFB);
+    glGenFramebuffers(1, &normalFB);
+    glBindFramebuffer(GL_FRAMEBUFFER, normalFB);
     
     glGBIPTexture2D(&normalTexture, w, h);
-    glGBIPTexture2D(&positionTexture, w, h);
     
     // each attachment are mapped into `layout(location = ?) out ~~`
-    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, normalTexture, 0);
-    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D, positionTexture, 0);
+    glFramebufferTexture2D(GL_FRAMEBUFFER,
+                           norposTexDrawBuffers[0],
+                           GL_TEXTURE_2D,
+                           normalTexture,
+                           0);
     // `glDrawBuffers` set the buffer list to be drawn
-    glDrawBuffers(2, norposTexDrawBuffers);
+    glDrawBuffers(1, &norposTexDrawBuffers[0]);
     
     glGenRenderbuffers(1, &renderBufferobject);
     glBindRenderbuffer(GL_RENDERBUFFER, renderBufferobject);
@@ -262,9 +251,47 @@ void pdInit(GLFWwindow *window)
     if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
         std::cout << "ERROR::FRAMEBUFFER:: Framebuffer is not complete!" << std::endl;
     
+    // pass #2 - out Position
+    
+    glGenFramebuffers(1, &positionFB);
+    glBindFramebuffer(GL_FRAMEBUFFER, positionFB);
+    
+    glGBIPTexture2D(&positionTexture, w, h);
+    glFramebufferTexture2D(GL_FRAMEBUFFER,
+                           norposTexDrawBuffers[1],
+                           GL_TEXTURE_2D,
+                           positionTexture,
+                           0);
+    glDrawBuffers(1, &norposTexDrawBuffers[1]);
+    
+    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, renderBufferobject);
+    
+    if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+        std::cout << "ERROR::FRAMEBUFFER:: Framebuffer is not complete!" << std::endl;
+    
+    
+    // pass #3 - edge detection
+    
+    glGenFramebuffers(1, &edgeFB);
+    glBindFramebuffer(GL_FRAMEBUFFER, edgeFB);
+    
+    glGBIPTexture2D(&edgeTexture, w, h);
+    glFramebufferTexture2D(GL_FRAMEBUFFER,
+                           norposTexDrawBuffers[2],
+                           GL_TEXTURE_2D,
+                           edgeTexture,
+                           0);
+    glDrawBuffers(1, &norposTexDrawBuffers[2]);
+    
+    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, renderBufferobject);
+    
+    if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+        std::cout << "ERROR::FRAMEBUFFER:: Framebuffer is not complete!" << std::endl;
+    
     //
     // umbilic unsolved principal direction
     //
+    
     std::cout << "--- Principal Direction Program Init ---\n";
     
     pdProgram.loadShader("pd.vert", "pd.frag");
@@ -312,10 +339,8 @@ void pdInit(GLFWwindow *window)
     GLint maxAttach;
     glGetIntegerv(GL_MAX_COLOR_ATTACHMENTS, &maxAttach);
     std::cout << "Max Color Attachments: " << maxAttach << std::endl;
-    // bind framebuffer0 - texture0
-    // bind framebuffer1 - texture1
-    // bind framebuffer2 - texture0
-    // ...
+    
+    // bind framebuffer[i] - texture[i%2]
     glGBIPTexture2D(&sdTexture[0], w, h);
     glGBIPTexture2D(&sdTexture[1], w, h);
     for (int i = 0; i < SMOOTHING_COUNT; i++)
@@ -384,7 +409,7 @@ void pdRender(GLFWwindow *window)
     
     glUseProgram(normalPositionProgram.programID);
     
-    glBindFramebuffer(GL_FRAMEBUFFER, normalPositionFB);
+    glBindFramebuffer(GL_FRAMEBUFFER, normalFB);
     glBindVertexArray(normalVAO);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, vertexElement);
     
@@ -401,6 +426,60 @@ void pdRender(GLFWwindow *window)
     glUniformMatrix4fv(viewMatLoc, 1, GL_FALSE, glm::value_ptr(viewMat));
     glUniformMatrix4fv(projMatLoc, 1, GL_FALSE, glm::value_ptr(projMat));
     
+    GLuint npIndex = glGetSubroutineUniformLocation(normalPositionProgram.programID, GL_FRAGMENT_SHADER, "renderPass");
+    if (npIndex == -1)
+    {
+        std::cout << "Subroutine indexing error" << std::endl;
+        return;
+    }
+    
+    GLuint npPass1 = glGetSubroutineIndex(normalPositionProgram.programID, GL_FRAGMENT_SHADER, "pass1");
+    glUniformSubroutinesuiv(GL_FRAGMENT_SHADER, 1, &npPass1);
+    
+    glDrawElements(GL_TRIANGLES, obj.nElements3 * 3, GL_UNSIGNED_SHORT, 0);
+    
+    // pass #2
+    
+    glBindFramebuffer(GL_FRAMEBUFFER, positionFB);
+    
+    glViewport(0, 0, w, h);
+    
+    glClearColor(0.0, 0.0, 0.0, 0.0);
+    glEnable(GL_DEPTH_TEST);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    
+    GLuint npPass2 = glGetSubroutineIndex(normalPositionProgram.programID, GL_FRAGMENT_SHADER, "pass2");
+    glUniformSubroutinesuiv(GL_FRAGMENT_SHADER, 1, &npPass2);
+    
+    glDrawElements(GL_TRIANGLES, obj.nElements3 * 3, GL_UNSIGNED_SHORT, 0);
+    
+    
+    // pass #3
+    
+    glBindFramebuffer(GL_FRAMEBUFFER, edgeFB);
+    
+    glViewport(0, 0, w, h);
+    
+    glClearColor(0.0, 0.0, 0.0, 0.0);
+    glEnable(GL_DEPTH_TEST);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    
+    GLuint inverseSizeLoc = glGetUniformLocation(normalPositionProgram.programID, "inverseSize");
+    glm::vec2 inverseSize(1 / (float)w, 1 / (float)h);
+    glUniform2fv(inverseSizeLoc, 1, glm::value_ptr(inverseSize));
+    
+    GLuint edgeThresholdLoc = glGetUniformLocation(normalPositionProgram.programID,
+                                                   "edgeThreshold");
+    glUniform1f(edgeThresholdLoc, edgeThreshold);
+    
+    glActiveTexture(GL_TEXTURE1);
+    glBindTexture(GL_TEXTURE_2D, positionTexture);
+    GLuint ptLoc = glGetUniformLocation(normalPositionProgram.programID, "positionTex");
+    glUniform1i(ptLoc, 1);
+    
+    GLuint npPass3 = glGetSubroutineIndex(normalPositionProgram.programID, GL_FRAGMENT_SHADER, "pass3");
+    glUniformSubroutinesuiv(GL_FRAGMENT_SHADER, 1, &npPass3);
+    
     glDrawElements(GL_TRIANGLES, obj.nElements3 * 3, GL_UNSIGNED_SHORT, 0);
     
     //
@@ -414,9 +493,9 @@ void pdRender(GLFWwindow *window)
     
     glViewport(0, 0, w, h);
     
+    glDisable(GL_DEPTH_TEST);
     glClearColor(0.0, 0.0, 0.0, 0.0);
     glClear(GL_COLOR_BUFFER_BIT);
-    glDisable(GL_DEPTH_TEST);
     
     // value below (0 and 1) is same with GL_TEXTURE{value}
     GLuint normTexLoc = glGetUniformLocation(pdProgram.programID, "normalTexture");
@@ -469,15 +548,15 @@ void pdRender(GLFWwindow *window)
     
     glUseProgram(sdProgram.programID);
     
-    GLuint index = glGetSubroutineUniformLocation(sdProgram.programID, GL_FRAGMENT_SHADER, "renderPass");
-    if (index == -1)
-    {
-        std::cout << "Subroutine indexing error" << std::endl;
-        return;
-    }
+//    GLuint index = glGetSubroutineUniformLocation(sdProgram.programID, GL_FRAGMENT_SHADER, "renderPass");
+//    if (index == -1)
+//    {
+//        std::cout << "Subroutine indexing error" << std::endl;
+//        return;
+//    }
     
-    GLuint pass2 = glGetSubroutineIndex(sdProgram.programID, GL_FRAGMENT_SHADER, "pass2");
-    glUniformSubroutinesuiv(GL_FRAGMENT_SHADER, 1, &pass2);
+//    GLuint pass2 = glGetSubroutineIndex(sdProgram.programID, GL_FRAGMENT_SHADER, "pass2");
+//    glUniformSubroutinesuiv(GL_FRAGMENT_SHADER, 1, &pass2);
     
     for (int i = 0; i < sdCount; i++)
     {
@@ -489,17 +568,18 @@ void pdRender(GLFWwindow *window)
         glClearColor(0.0, 0.0, 0.0, 0.0);
         glClear(GL_COLOR_BUFFER_BIT);
         
-        GLuint testTexLoc = glGetUniformLocation(sdProgram.programID, "tex");
+        GLuint testTexLoc = glGetUniformLocation(sdProgram.programID, "pdTex");
         glUniform1i(testTexLoc, 3 + i % 2);
         glActiveTexture(GL_TEXTURE3 + i % 2);
         GLuint tex = i == 0 ? usTexture : sdTexture[(i - 1) % 2];
         glBindTexture(GL_TEXTURE_2D, tex);
         
-        GLuint positionTexLoc = glGetUniformLocation(sdProgram.programID, "positionTex");
-        glUniform1i(positionTexLoc, 0);
+        glActiveTexture(GL_TEXTURE6);
+        glBindTexture(GL_TEXTURE_2D, edgeTexture);
+        GLuint positionTexLoc = glGetUniformLocation(sdProgram.programID, "edgeTex");
+        glUniform1i(positionTexLoc, 6);
         
         GLuint inverseSizeLoc = glGetUniformLocation(sdProgram.programID, "inverseSize");
-        glm::vec2 inverseSize(1 / (float)w, 1 / (float)h);
         glUniform2fv(inverseSizeLoc, 1, glm::value_ptr(inverseSize));
         
         glDrawArrays(GL_TRIANGLES, 0, 6);
@@ -518,7 +598,10 @@ void pdRender(GLFWwindow *window)
     GLuint quadTexLoc = glGetUniformLocation(quadProgram.programID, "tex");
     glUniform1i(quadTexLoc, 5);
     glActiveTexture(GL_TEXTURE5);
-    glBindTexture(GL_TEXTURE_2D, sdTexture[(sdCount - 1) % 2]);
+    if (doSmoothing)
+        glBindTexture(GL_TEXTURE_2D, sdTexture[(sdCount - 1) % 2]);
+    else
+        glBindTexture(GL_TEXTURE_2D, usTexture);
     
     glDrawArrays(GL_TRIANGLES, 0, 6);
     
