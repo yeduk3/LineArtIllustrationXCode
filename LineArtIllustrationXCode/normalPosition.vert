@@ -15,8 +15,8 @@ void main()
     vec4 worldPos = modelMat * vec4(in_Position, 1);
     gl_Position = projMat * viewMat * worldPos;
 
-    worldPosition = worldPos.xyz;
-    normal = in_Normal;
-//    worldPosition = (viewMat * vec4(worldPos.xyz, 1)).xyz;
-//    normal = (viewMat * vec4(in_Normal, 0)).xyz;
+//    worldPosition = worldPos.xyz;
+//    normal = in_Normal;
+    worldPosition = (viewMat * vec4(worldPos.xyz, 1)).xyz;
+    normal = (viewMat * vec4(in_Normal, 0)).xyz;
 }

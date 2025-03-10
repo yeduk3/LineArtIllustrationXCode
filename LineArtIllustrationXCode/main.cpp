@@ -32,22 +32,29 @@ GLuint normalVAO;
 GLuint positionVBO, normalVBO;
 GLuint vertexElement;
 
-GLuint normalFB, positionFB, edgeFB;
-GLuint normalTexture, positionTexture, edgeTexture;
-GLenum norposTexDrawBuffers[3] = {
+enum Index {
+    NORMAL,
+    POSITION,
+    PHONG,
+    EDGE
+};
+GLuint dataFB[4];
+GLuint dataTexture[4];
+GLenum dataTexDrawBuffers[4] = {
     GL_COLOR_ATTACHMENT0,
     GL_COLOR_ATTACHMENT1,
-    GL_COLOR_ATTACHMENT6
+    GL_COLOR_ATTACHMENT2,
+    GL_COLOR_ATTACHMENT3
 };
 GLuint renderBufferobject;
-float edgeThreshold = 0.01f;
+float edgeThreshold = 0.1f;
 
 // pd: umbilic unsolved
 GLuint pdFB;
 GLuint pdTexture;
 GLuint pdVAO;
 GLuint pdQuadVBO;
-GLenum pdTexDrawBuffers[1] = {GL_COLOR_ATTACHMENT2};
+GLenum pdTexDrawBuffers[1] = {GL_COLOR_ATTACHMENT0};
 
 // umbolic solver
 
@@ -55,12 +62,12 @@ Program usProgram;
 
 GLuint usFB;
 GLuint usTexture;
-GLenum usTexDrawBuffers[1] = {GL_COLOR_ATTACHMENT3};
+GLenum usTexDrawBuffers[1] = {GL_COLOR_ATTACHMENT0};
 
 // smooth directions
 
 const int SMOOTHING_COUNT = 6;
-int sdCount = 1;
+int sdCount = 2;
 Program sdProgram;
 GLuint sdFB[SMOOTHING_COUNT];
 GLuint sdTexture[2];
@@ -228,65 +235,31 @@ void pdInit(GLFWwindow *window)
     int w, h;
     glfwGetFramebufferSize(window, &w, &h);
     
-    glGenFramebuffers(1, &normalFB);
-    glBindFramebuffer(GL_FRAMEBUFFER, normalFB);
-    
-    glGBIPTexture2D(&normalTexture, w, h);
-    
-    // each attachment are mapped into `layout(location = ?) out ~~`
-    glFramebufferTexture2D(GL_FRAMEBUFFER,
-                           norposTexDrawBuffers[0],
-                           GL_TEXTURE_2D,
-                           normalTexture,
-                           0);
-    // `glDrawBuffers` set the buffer list to be drawn
-    glDrawBuffers(1, &norposTexDrawBuffers[0]);
-    
     glGenRenderbuffers(1, &renderBufferobject);
     glBindRenderbuffer(GL_RENDERBUFFER, renderBufferobject);
     glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, w, h);
     
-    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, renderBufferobject);
-    
-    if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
-        std::cout << "ERROR::FRAMEBUFFER:: Framebuffer is not complete!" << std::endl;
-    
-    // pass #2 - out Position
-    
-    glGenFramebuffers(1, &positionFB);
-    glBindFramebuffer(GL_FRAMEBUFFER, positionFB);
-    
-    glGBIPTexture2D(&positionTexture, w, h);
-    glFramebufferTexture2D(GL_FRAMEBUFFER,
-                           norposTexDrawBuffers[1],
-                           GL_TEXTURE_2D,
-                           positionTexture,
-                           0);
-    glDrawBuffers(1, &norposTexDrawBuffers[1]);
-    
-    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, renderBufferobject);
-    
-    if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
-        std::cout << "ERROR::FRAMEBUFFER:: Framebuffer is not complete!" << std::endl;
-    
-    
-    // pass #3 - edge detection
-    
-    glGenFramebuffers(1, &edgeFB);
-    glBindFramebuffer(GL_FRAMEBUFFER, edgeFB);
-    
-    glGBIPTexture2D(&edgeTexture, w, h);
-    glFramebufferTexture2D(GL_FRAMEBUFFER,
-                           norposTexDrawBuffers[2],
-                           GL_TEXTURE_2D,
-                           edgeTexture,
-                           0);
-    glDrawBuffers(1, &norposTexDrawBuffers[2]);
-    
-    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, renderBufferobject);
-    
-    if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
-        std::cout << "ERROR::FRAMEBUFFER:: Framebuffer is not complete!" << std::endl;
+    for(int i = 0; i < 4; i++) {
+        glGenFramebuffers(1, &dataFB[i]);
+        glBindFramebuffer(GL_FRAMEBUFFER, dataFB[i]);
+        
+        glGBIPTexture2D(&dataTexture[i], w, h);
+        
+        // each attachment are mapped into `layout(location = ?) out ~~`
+        glFramebufferTexture2D(GL_FRAMEBUFFER,
+                               dataTexDrawBuffers[0],
+                               GL_TEXTURE_2D,
+                               dataFB[i],
+                               0);
+        // `glDrawBuffers` set the buffer list to be drawn
+        glDrawBuffers(1, &dataTexDrawBuffers[0]);
+        
+        
+        glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, renderBufferobject);
+        
+        if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+            std::cout << "ERROR::FRAMEBUFFER:: Framebuffer is not complete!" << std::endl;
+    }
     
     //
     // umbilic unsolved principal direction
@@ -302,7 +275,7 @@ void pdInit(GLFWwindow *window)
     
     glGBIPTexture2D(&pdTexture, w, h);
     
-    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT2, GL_TEXTURE_2D, pdTexture, 0);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, pdTexDrawBuffers[0], GL_TEXTURE_2D, pdTexture, 0);
     glDrawBuffers(1, pdTexDrawBuffers);
     
     if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
@@ -321,7 +294,7 @@ void pdInit(GLFWwindow *window)
     
     glGBIPTexture2D(&usTexture, w, h);
     
-    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT3, GL_TEXTURE_2D, usTexture, 0);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, usTexDrawBuffers[0], GL_TEXTURE_2D, usTexture, 0);
     glDrawBuffers(1, usTexDrawBuffers);
     
     if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
@@ -348,7 +321,7 @@ void pdInit(GLFWwindow *window)
         glBindFramebuffer(GL_FRAMEBUFFER, sdFB[i]);
         
         GLenum attach[1];
-        attach[0] = GL_COLOR_ATTACHMENT4 + i % 2;
+        attach[0] = GL_COLOR_ATTACHMENT0;
         glFramebufferTexture2D(GL_FRAMEBUFFER, attach[0], GL_TEXTURE_2D, sdTexture[i % 2], 0);
         glDrawBuffers(1, attach);
         
@@ -389,9 +362,9 @@ void pdRender(GLFWwindow *window)
 {
     
     glm::mat4 modelMat = glm::mat4({{1, 0, 0, 0},
-        {0, 1, 0, 0},
-        {0, 0, 1, 0},
-        {0, -1.5, 0, 1}});
+                                    {0, 1, 0, 0},
+                                    {0, 0, 1, 0},
+                                    {0, -1.5, 0, 1}});
     // modelMat = glm::scale(glm::vec3(0.01)) * modelMat;
     glm::mat4 rotateX = glm::rotate(cameraPhi, glm::vec3(1, 0, 0));
     glm::mat4 rotateY = glm::rotate(cameraTheta, glm::vec3(0, 1, 0));
@@ -409,7 +382,7 @@ void pdRender(GLFWwindow *window)
     
     glUseProgram(normalPositionProgram.programID);
     
-    glBindFramebuffer(GL_FRAMEBUFFER, normalFB);
+    glBindFramebuffer(GL_FRAMEBUFFER, dataFB[NORMAL]);
     glBindVertexArray(normalVAO);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, vertexElement);
     
@@ -440,7 +413,7 @@ void pdRender(GLFWwindow *window)
     
     // pass #2
     
-    glBindFramebuffer(GL_FRAMEBUFFER, positionFB);
+    glBindFramebuffer(GL_FRAMEBUFFER, dataFB[POSITION]);
     
     glViewport(0, 0, w, h);
     
@@ -453,10 +426,46 @@ void pdRender(GLFWwindow *window)
     
     glDrawElements(GL_TRIANGLES, obj.nElements3 * 3, GL_UNSIGNED_SHORT, 0);
     
-    
     // pass #3
     
-    glBindFramebuffer(GL_FRAMEBUFFER, edgeFB);
+    glBindFramebuffer(GL_FRAMEBUFFER, dataFB[PHONG]);
+    
+    glViewport(0, 0, w, h);
+    
+    glClearColor(0.0, 0.0, 0.0, 0.0);
+    glEnable(GL_DEPTH_TEST);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    
+    
+    GLuint lightPositionLoc = glGetUniformLocation(normalPositionProgram.programID, "lightPosition");
+    GLuint eyePositionLoc   = glGetUniformLocation(normalPositionProgram.programID, "eyePosition");
+    GLuint lightColorLoc    = glGetUniformLocation(normalPositionProgram.programID, "lightColor");
+    GLuint diffuseColorLoc  = glGetUniformLocation(normalPositionProgram.programID, "diffuseColor");
+    GLuint specularColorLoc = glGetUniformLocation(normalPositionProgram.programID, "specularColor");
+    GLuint shininessLoc     = glGetUniformLocation(normalPositionProgram.programID, "shininess");
+
+    glm::vec3 lightPosition(10, 10, 5);
+    glm::vec3 lightColor(140);
+    glm::vec3 diffuseColor(1, 1, 1);
+    glm::vec3 specularColor(0.33, 0.33, 0.33);
+    float shininess = 12;
+
+    glUniform3fv(lightPositionLoc, 1, glm::value_ptr(lightPosition));
+    glUniform3fv(eyePositionLoc, 1, glm::value_ptr(eyePosition));
+    glUniform3fv(lightColorLoc, 1, glm::value_ptr(lightColor));
+    glUniform3fv(diffuseColorLoc, 1, glm::value_ptr(diffuseColor));
+    glUniform3fv(specularColorLoc, 1, glm::value_ptr(specularColor));
+    glUniform1f(shininessLoc, shininess);
+    
+    GLuint npPass3 = glGetSubroutineIndex(normalPositionProgram.programID, GL_FRAGMENT_SHADER, "pass3");
+    glUniformSubroutinesuiv(GL_FRAGMENT_SHADER, 1, &npPass3);
+    
+    glDrawElements(GL_TRIANGLES, obj.nElements3 * 3, GL_UNSIGNED_SHORT, 0);
+    
+    
+    // pass #4
+    
+    glBindFramebuffer(GL_FRAMEBUFFER, dataFB[EDGE]);
     
     glViewport(0, 0, w, h);
     
@@ -473,12 +482,12 @@ void pdRender(GLFWwindow *window)
     glUniform1f(edgeThresholdLoc, edgeThreshold);
     
     glActiveTexture(GL_TEXTURE1);
-    glBindTexture(GL_TEXTURE_2D, positionTexture);
+    glBindTexture(GL_TEXTURE_2D, dataTexture[PHONG]);
     GLuint ptLoc = glGetUniformLocation(normalPositionProgram.programID, "positionTex");
     glUniform1i(ptLoc, 1);
     
-    GLuint npPass3 = glGetSubroutineIndex(normalPositionProgram.programID, GL_FRAGMENT_SHADER, "pass3");
-    glUniformSubroutinesuiv(GL_FRAGMENT_SHADER, 1, &npPass3);
+    GLuint npPass4 = glGetSubroutineIndex(normalPositionProgram.programID, GL_FRAGMENT_SHADER, "pass4");
+    glUniformSubroutinesuiv(GL_FRAGMENT_SHADER, 1, &npPass4);
     
     glDrawElements(GL_TRIANGLES, obj.nElements3 * 3, GL_UNSIGNED_SHORT, 0);
     
@@ -504,9 +513,9 @@ void pdRender(GLFWwindow *window)
     glUniform1i(posTexLoc, 1);
     
     glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, normalTexture);
+    glBindTexture(GL_TEXTURE_2D, dataTexture[NORMAL]);
     glActiveTexture(GL_TEXTURE1);
-    glBindTexture(GL_TEXTURE_2D, positionTexture);
+    glBindTexture(GL_TEXTURE_2D, dataTexture[POSITION]);
     
     // test values
     GLuint OFFSETLoc = glGetUniformLocation(pdProgram.programID, "OFFSET");
@@ -575,7 +584,7 @@ void pdRender(GLFWwindow *window)
         glBindTexture(GL_TEXTURE_2D, tex);
         
         glActiveTexture(GL_TEXTURE6);
-        glBindTexture(GL_TEXTURE_2D, edgeTexture);
+        glBindTexture(GL_TEXTURE_2D, dataTexture[EDGE]);
         GLuint positionTexLoc = glGetUniformLocation(sdProgram.programID, "edgeTex");
         glUniform1i(positionTexLoc, 6);
         
@@ -601,7 +610,7 @@ void pdRender(GLFWwindow *window)
     if (doSmoothing)
         glBindTexture(GL_TEXTURE_2D, sdTexture[(sdCount - 1) % 2]);
     else
-        glBindTexture(GL_TEXTURE_2D, usTexture);
+        glBindTexture(GL_TEXTURE_2D, dataTexture[EDGE]);
     
     glDrawArrays(GL_TRIANGLES, 0, 6);
     

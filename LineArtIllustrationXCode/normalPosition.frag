@@ -37,8 +37,36 @@ vec4 pass2() {
     return vec4(worldPosition, 1);
 }
 
+// lighting
 
-// pass #3 - Edge detection
+uniform vec3 lightPosition;
+uniform vec3 eyePosition;
+uniform vec3 lightColor;
+uniform vec3 diffuseColor;
+uniform vec3 specularColor;
+uniform float shininess;
+
+// pass #3 - phong shading
+subroutine(renderPassType)
+vec4 pass3() {
+    vec3 l = lightPosition - worldPosition.xyz;
+    vec3 L = normalize(l);
+    vec3 N = normalize(normal);
+    vec3 R = 2 * dot(L, N) * N - L;
+    vec3 V = normalize(eyePosition - worldPosition.xyz);
+    vec3 I = lightColor / dot(l, l);
+
+    vec3 ambient = diffuseColor * vec3(0.02);
+    vec3 diffuse = I * diffuseColor * max(dot(L, N), 0);
+    vec3 specular = I * specularColor * pow(max(dot(R, V), 0), shininess);
+
+    vec3 color = ambient + diffuse + specular;
+
+    return vec4(pow(color, vec3(1 / 2.2)), 1);
+}
+
+
+// pass #4 - Edge detection
 
 
 
@@ -47,7 +75,7 @@ float luma(vec3 color) {
 }
 
 subroutine(renderPassType)
-vec4 pass3() {
+vec4 pass4() {
     float dx = inverseSize.x;
     float dy = inverseSize.y;
     vec2  texCoords = gl_FragCoord.xy * inverseSize;
@@ -65,7 +93,6 @@ vec4 pass3() {
     float sy = s00 + 2 * s01 + s02 - (s20 + 2 * s21 + s22);
     float dist = pow(sx, 2) + pow(sy, 2);
 
-    // outPosition.w is 1 if it is edge, otherwise 0.
     return vec4(int(dist > edgeThreshold));
 //    outEdge = texture(positionTex, texCoords);
 }
