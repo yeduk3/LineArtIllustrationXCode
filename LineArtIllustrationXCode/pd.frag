@@ -9,7 +9,8 @@ uniform sampler2D normalTexture;
 uniform sampler2D positionTexture;
 
 // const float OFFSET = 0.00002;
-uniform float OFFSET;
+//uniform float OFFSET;
+uniform vec2 inverseSize;
 // const float CLOSETOZERO = 0.0001;
 uniform float CLOSETOZERO;
 
@@ -28,14 +29,14 @@ void main()
     vec3 pp = texture(positionTexture, texCoords).xyz;
 
     vec2 biasedTexCoords = vec2(texCoords);
-    if (biasedTexCoords.x + OFFSET >= 1.0)
-        biasedTexCoords.x -= OFFSET;
+    if (biasedTexCoords.x + inverseSize.x >= 1.0)
+        biasedTexCoords.x -= inverseSize.x;
     else
-        biasedTexCoords.x += OFFSET;
-    if (biasedTexCoords.y + OFFSET >= 1.0)
-        biasedTexCoords.y -= OFFSET;
+        biasedTexCoords.x += inverseSize.x;
+    if (biasedTexCoords.y + inverseSize.y >= 1.0)
+        biasedTexCoords.y -= inverseSize.y;
     else
-        biasedTexCoords.y += OFFSET;
+        biasedTexCoords.y += inverseSize.y;
 
     vec3 n1 = texture(normalTexture, vec2(biasedTexCoords.x, texCoords.y)).xyz;
     vec3 p1 = texture(positionTexture, vec2(biasedTexCoords.x, texCoords.y)).xyz;

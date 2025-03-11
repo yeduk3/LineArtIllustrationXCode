@@ -85,6 +85,8 @@ Program quadProgram;
 GLuint quadVAO;
 GLuint quadVBO;
 
+GLuint finalTexture;
+
 float quadVertices[] = {
     // positions   // texCoords
     -1.0f, 1.0f, 0.0f, 1.0f,
@@ -160,8 +162,8 @@ void cursorPosCallback(GLFWwindow *window, double xpos, double ypos)
     lastY = ypos;
 }
 
-float testOffset = 0.00001;
-float testOffsetDelta = 0.00001;
+//float testOffset = 0.00001;
+//float testOffsetDelta = 0.00001;
 bool enableCaseTest = false;
 float testCloseToZero = 0.0005;
 float testCloseToZeroDelta = 0.0001;
@@ -171,17 +173,17 @@ bool doSmoothing = true;
 
 void keyCallback(GLFWwindow *window, int key, int scancode, int action, int mods)
 {
-    if (key == GLFW_KEY_RIGHT && action > GLFW_RELEASE)
-    {
-        testOffset = comparator::min(0.1, comparator::max(0, testOffset + testOffsetDelta));
-        std::cout << "Offset: " << testOffset << std::endl;
-    }
-    else if (key == GLFW_KEY_LEFT && action > GLFW_RELEASE)
-    {
-        testOffset = comparator::min(0.1, comparator::max(0, testOffset - testOffsetDelta));
-        std::cout << "Offset: " << testOffset << std::endl;
-    }
-    else if (key == GLFW_KEY_SPACE && action == GLFW_PRESS)
+//    if (key == GLFW_KEY_RIGHT && action > GLFW_RELEASE)
+//    {
+//        testOffset = comparator::min(0.1, comparator::max(0, testOffset + testOffsetDelta));
+//        std::cout << "Offset: " << testOffset << std::endl;
+//    }
+//    else if (key == GLFW_KEY_LEFT && action > GLFW_RELEASE)
+//    {
+//        testOffset = comparator::min(0.1, comparator::max(0, testOffset - testOffsetDelta));
+//        std::cout << "Offset: " << testOffset << std::endl;
+//    }
+     if (key == GLFW_KEY_SPACE && action == GLFW_PRESS)
     {
         enableCaseTest = !enableCaseTest;
     }
@@ -201,10 +203,36 @@ void keyCallback(GLFWwindow *window, int key, int scancode, int action, int mods
             std::cout << "sdCount: " << sdCount << std::endl;
         }
     }
-    else if (key == GLFW_KEY_E && action == GLFW_PRESS) {
-        doSmoothing = !doSmoothing;
-        std::cout << "doSmoothing: " << doSmoothing << std::endl;
+    else if (key == GLFW_KEY_N && action == GLFW_PRESS) {
+        finalTexture = dataTexture[NORMAL];
+        std::cout << "Normal Texture" << std::endl;
     }
+    else if (key == GLFW_KEY_P && action == GLFW_PRESS) {
+        finalTexture = dataTexture[POSITION];
+        std::cout << "World Position Texture" << std::endl;
+    }
+    else if (key == GLFW_KEY_H && action == GLFW_PRESS) {
+        finalTexture = dataTexture[PHONG];
+        std::cout << "Phong Texture" << std::endl;
+    }
+    else if (key == GLFW_KEY_E && action == GLFW_PRESS) {
+        finalTexture = dataTexture[EDGE];
+        std::cout << "Edge Detection Texture" << std::endl;
+    }
+    else if (key == GLFW_KEY_D && action == GLFW_PRESS) {
+        finalTexture = pdTexture;
+        std::cout << "Principal Direction Texture" << std::endl;
+    }
+    else if (key == GLFW_KEY_S && action == GLFW_PRESS) {
+        finalTexture = sdTexture[(sdCount - 1) % 2];
+        std::cout << "Smoothed Direction Texture" << std::endl;
+    }
+    else if (key == GLFW_KEY_A && action == GLFW_PRESS) {
+        finalTexture = angleTexture;
+        std::cout << "Angle Texture" << std::endl;
+    }
+
+
 //    else if (key == GLFW_KEY_V && action == GLFW_PRESS) {
 //        isView = !isView;
 //        std::cout << "isView: " << isView << std::endl;
@@ -561,8 +589,8 @@ void pdRender(GLFWwindow *window)
     glBindTexture(GL_TEXTURE_2D, dataTexture[POSITION]);
     
     // test values
-    GLuint OFFSETLoc = glGetUniformLocation(pdProgram.programID, "OFFSET");
-    glUniform1f(OFFSETLoc, testOffset);
+//    GLuint OFFSETLoc = glGetUniformLocation(pdProgram.programID, "OFFSET");
+//    glUniform1f(OFFSETLoc, testOffset);
     GLuint enableCaseTestLoc = glGetUniformLocation(pdProgram.programID, "enableCaseTest");
     glUniform1i(enableCaseTestLoc, enableCaseTest);
     GLuint closeToZeroLoc = glGetUniformLocation(pdProgram.programID, "CLOSETOZERO");
@@ -690,11 +718,7 @@ void pdRender(GLFWwindow *window)
     GLuint quadTexLoc = glGetUniformLocation(quadProgram.programID, "tex");
     glUniform1i(quadTexLoc, 0);
     glActiveTexture(GL_TEXTURE0);
-    if (doSmoothing)
-        glBindTexture(GL_TEXTURE_2D, angleTexture);
-    else
-        glBindTexture(GL_TEXTURE_2D, dataTexture[EDGE]);
-//    glBindTexture(GL_TEXTURE_2D, dataTexture[NORMAL]);
+    glBindTexture(GL_TEXTURE_2D, finalTexture);
     
     glDrawArrays(GL_TRIANGLES, 0, 6);
     
