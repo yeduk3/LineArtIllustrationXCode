@@ -63,12 +63,15 @@ vec4 pass1() {
 }
 
 
+const float t[7] = float[7](0.0, float(1) / 6, float(2) / 6, float(3) / 6, float(4) / 6, float(5) / 6, 1.0);
 
 subroutine(renderPassType)
 vec4 pass2() {
     // Discretize Angle & Blending
     
+    // 0 < angel < pi
     float angle = acos(texture(pdTex, texCoords).x);
+    // split pi into same-width Q_LEVEL bins.
     float qd = 3.141592 / float(Q_LEVEL);
     
     // -1 <= qlLevel < qxLevel < qrLevel <= Q_LEVEL
@@ -79,24 +82,31 @@ vec4 pass2() {
     
     float lDiff = angle - qxLevel * qd;
     float rDiff = qd - lDiff;
-//    return vec4(angle / 3.141592);
+    float dixAngle = qxLevel * qd;
+    float dilAngle = qlLevel * qd;
+    float dirAngle = qrLevel * qd;
+    float blendedAngle = (dixAngle * qd + dilAngle * lDiff + dirAngle * rDiff) / (2 * qd);
+//    return vec4(angle / 3.141592); // Original Angle
+//    return vec4(float(qxLevel) / Q_LEVEL); // Quantized Angle
+    return vec4(blendedAngle / 3.141952);
+    
     
     // Using TAM
     
-    float tone = color.x; // 0 dark, 1 light
+    float tone = texture(phong, texCoords).x; // 0 dark, 1 light
 
-    vec2 texCoord;
-    texCoord.y = asin(N.y) / 3.141592 * k;
-    texCoord.x = atan(N.x, N.z) / 3.141592 * k;
+//    vec2 texCoord;
+//    texCoord.y = asin(N.y) / 3.141592 * k;
+//    texCoord.x = atan(N.x, N.z) / 3.141592 * k;
 
     vec3 color1, color2;
 
-    color1.r = texture(tam0, texCoord).r;
-    color1.g = texture(tam1, texCoord).g;
-    color1.b = texture(tam2, texCoord).b;
-    color2.r = texture(tam3, texCoord).r;
-    color2.g = texture(tam4, texCoord).g;
-    color2.b = texture(tam5, texCoord).b;
+    color1.r = texture(tam0, texCoords).r;
+    color1.g = texture(tam1, texCoords).g;
+    color1.b = texture(tam2, texCoords).b;
+    color2.r = texture(tam3, texCoords).r;
+    color2.g = texture(tam4, texCoords).g;
+    color2.b = texture(tam5, texCoords).b;
 
     float tone2 = 1 - tone;
 
@@ -118,7 +128,7 @@ vec4 pass2() {
     vec3 blended = 1 - vec3(dot(1 - color1, ratio1) + dot(1 - color2, ratio2));
 
     
-    return texture(tam0, texCoords);
+    return vec4(blended, 1);
 }
 
 void main() {
