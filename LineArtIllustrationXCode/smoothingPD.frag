@@ -88,7 +88,7 @@ vec4 pass2() {
     float blendedAngle = (dixAngle * qd + dilAngle * lDiff + dirAngle * rDiff) / (2 * qd);
 //    return vec4(angle / 3.141592); // Original Angle
 //    return vec4(float(qxLevel) / Q_LEVEL); // Quantized Angle
-    return vec4(blendedAngle / 3.141952);
+//    return vec4(blendedAngle / 3.141952);
     
     
     // Using TAM
@@ -100,13 +100,18 @@ vec4 pass2() {
 //    texCoord.x = atan(N.x, N.z) / 3.141592 * k;
 
     vec3 color1, color2;
+    
+    float co = cos(blendedAngle);
+    float si = sin(blendedAngle);
+    mat2 rot = mat2(vec2(co, si), vec2(-si, co));
+    vec2 rotatedTexCoords = rot * texCoords * 10;
 
-    color1.r = texture(tam0, texCoords).r;
-    color1.g = texture(tam1, texCoords).g;
-    color1.b = texture(tam2, texCoords).b;
-    color2.r = texture(tam3, texCoords).r;
-    color2.g = texture(tam4, texCoords).g;
-    color2.b = texture(tam5, texCoords).b;
+    color1.r = texture(tam0, rotatedTexCoords).r;
+    color1.g = texture(tam1, rotatedTexCoords).g;
+    color1.b = texture(tam2, rotatedTexCoords).b;
+    color2.r = texture(tam3, rotatedTexCoords).r;
+    color2.g = texture(tam4, rotatedTexCoords).g;
+    color2.b = texture(tam5, rotatedTexCoords).b;
 
     float tone2 = 1 - tone;
 

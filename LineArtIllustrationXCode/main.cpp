@@ -167,7 +167,7 @@ float testCloseToZero = 0.0005;
 float testCloseToZeroDelta = 0.0001;
 
 bool doSmoothing = true;
-bool isView = true;
+//bool isView = false;
 
 void keyCallback(GLFWwindow *window, int key, int scancode, int action, int mods)
 {
@@ -205,10 +205,10 @@ void keyCallback(GLFWwindow *window, int key, int scancode, int action, int mods
         doSmoothing = !doSmoothing;
         std::cout << "doSmoothing: " << doSmoothing << std::endl;
     }
-    else if (key == GLFW_KEY_V && action == GLFW_PRESS) {
-        isView = !isView;
-        std::cout << "isView: " << isView << std::endl;
-    }
+//    else if (key == GLFW_KEY_V && action == GLFW_PRESS) {
+//        isView = !isView;
+//        std::cout << "isView: " << isView << std::endl;
+//    }
 }
 
 
@@ -495,8 +495,8 @@ void pdRender(GLFWwindow *window)
                                                    "edgeThreshold");
     glUniform1f(edgeThresholdLoc, edgeThreshold);
     
-    GLuint isViewLoc = glGetUniformLocation(normalPositionProgram.programID, "isView");
-    glUniform1i(isViewLoc, isView);
+//    GLuint isViewLoc = glGetUniformLocation(normalPositionProgram.programID, "isView");
+//    glUniform1i(isViewLoc, isView);
     
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, dataTexture[PHONG]);
