@@ -22,6 +22,9 @@
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtx/transform.hpp>
 
+#define STB_IMAGE_IMPLEMENTATION
+#include "stb_image.h"
+
 //
 // init
 //
@@ -69,8 +72,9 @@ GLenum usTexDrawBuffers[1] = {GL_COLOR_ATTACHMENT0};
 const int SMOOTHING_COUNT = 6;
 int sdCount = 2;
 Program sdProgram;
-GLuint sdFB[SMOOTHING_COUNT];
-GLuint sdTexture[2];
+GLuint sdFB[SMOOTHING_COUNT], angleFB;
+GLuint sdTexture[2], angleTexture;
+GLenum angleTexDrawBuffers[1] = {GL_COLOR_ATTACHMENT0};
 
 // test
 
@@ -163,6 +167,7 @@ float testCloseToZero = 0.0005;
 float testCloseToZeroDelta = 0.0001;
 
 bool doSmoothing = true;
+bool isView = true;
 
 void keyCallback(GLFWwindow *window, int key, int scancode, int action, int mods)
 {
@@ -200,10 +205,58 @@ void keyCallback(GLFWwindow *window, int key, int scancode, int action, int mods
         doSmoothing = !doSmoothing;
         std::cout << "doSmoothing: " << doSmoothing << std::endl;
     }
+    else if (key == GLFW_KEY_V && action == GLFW_PRESS) {
+        isView = !isView;
+        std::cout << "isView: " << isView << std::endl;
+    }
+}
+
+
+
+// TAM Texture Load //
+
+// tone: 0 is lightest, (TONE_COUNT-1) is darkest
+// mip: 0 is finest, (MIPMAP_COUNT-1) is coarsest // it is reverse order of the paper
+const int TONE_COUNT = 6;
+const int MIPMAP_COUNT = 4;
+GLuint TAMTexture[TONE_COUNT];
+
+void tamTexLoad()
+{
+    std::string filename = "TAM/tone0mip0.png";
+    stbi_set_flip_vertically_on_load(1);
+    glGenTextures(TONE_COUNT, TAMTexture);
+    for (int tone = 0; tone < TONE_COUNT; tone++)
+    {
+        glBindTexture(GL_TEXTURE_2D, TAMTexture[tone]);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, 0);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, MIPMAP_COUNT - 1);
+        for (int mip = 0; mip < MIPMAP_COUNT; mip++)
+        {
+            filename[8] = '0' + tone;
+            filename[12] = '0' + mip;
+            int x, y, n;
+            unsigned char *data = stbi_load(filename.c_str(), &x, &y, &n, 0);
+            std::cout << filename << " Image: x = " << x << ", y = " << y << ", n = " << n << std::endl;
+
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+            glTexImage2D(GL_TEXTURE_2D, mip, GL_RGBA8, x, y, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
+            stbi_image_free(data);
+        }
+    }
+    glBindTexture(GL_TEXTURE_2D, 0);
 }
 
 void pdInit(GLFWwindow *window)
 {
+    // Question. Call below function at first cause the error 1282(Invalid Operation).
+    // Case1. XCode. Previous project on VSCode worked fine, but XCode not.
+    // Case2. Another.... Something....
+    // tamTexLoad()
+    
     obj.loadObject("obj", "teapot.obj");
     
     //
@@ -245,14 +298,13 @@ void pdInit(GLFWwindow *window)
         
         glGBIPTexture2D(&dataTexture[i], w, h);
         
-        // each attachment are mapped into `layout(location = ?) out ~~`
         glFramebufferTexture2D(GL_FRAMEBUFFER,
                                dataTexDrawBuffers[0],
                                GL_TEXTURE_2D,
                                dataFB[i],
                                0);
         // `glDrawBuffers` set the buffer list to be drawn
-        glDrawBuffers(1, &dataTexDrawBuffers[0]);
+        glDrawBuffer(dataTexDrawBuffers[0]);
         
         
         glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, renderBufferobject);
@@ -275,8 +327,8 @@ void pdInit(GLFWwindow *window)
     
     glGBIPTexture2D(&pdTexture, w, h);
     
-    glFramebufferTexture2D(GL_FRAMEBUFFER, pdTexDrawBuffers[0], GL_TEXTURE_2D, pdTexture, 0);
-    glDrawBuffers(1, pdTexDrawBuffers);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, pdTexture, 0);
+    glDrawBuffer(GL_COLOR_ATTACHMENT0);
     
     if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
         std::cout << "ERROR::FRAMEBUFFER:: Framebuffer is not complete!" << std::endl;
@@ -309,9 +361,9 @@ void pdInit(GLFWwindow *window)
     glUseProgram(sdProgram.programID);
     
     glGenFramebuffers(SMOOTHING_COUNT, sdFB);
-    GLint maxAttach;
-    glGetIntegerv(GL_MAX_COLOR_ATTACHMENTS, &maxAttach);
-    std::cout << "Max Color Attachments: " << maxAttach << std::endl;
+//    GLint maxAttach;
+//    glGetIntegerv(GL_MAX_COLOR_ATTACHMENTS, &maxAttach);
+//    std::cout << "Max Color Attachments: " << maxAttach << std::endl;
     
     // bind framebuffer[i] - texture[i%2]
     glGBIPTexture2D(&sdTexture[0], w, h);
@@ -328,6 +380,20 @@ void pdInit(GLFWwindow *window)
         if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
             std::cout << "ERROR::FRAMEBUFFER " << i << "-th:: Framebuffer is not complete! Code " << glCheckFramebufferStatus(GL_FRAMEBUFFER) << std::endl;
     }
+    
+    // quantize angle fb
+    glGenFramebuffers(1, &angleFB);
+    glBindFramebuffer(GL_FRAMEBUFFER, angleFB);
+    
+    glGBIPTexture2D(&angleTexture, w, h);
+    glFramebufferTexture2D(GL_FRAMEBUFFER,
+                         angleTexDrawBuffers[0],
+                         GL_TEXTURE_2D,
+                         angleTexture, 0);
+    glDrawBuffer(angleTexDrawBuffers[0]);
+    
+    if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+        std::cout << "ERROR::FRAMEBUFFER Framebuffer is not complete! Code " << glCheckFramebufferStatus(GL_FRAMEBUFFER) << std::endl;
     
     //
     // test
@@ -352,6 +418,8 @@ void pdInit(GLFWwindow *window)
     
     glEnableVertexAttribArray(1);
     glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void *)(2 * sizeof(float)));
+    
+    tamTexLoad();
 }
 
 //
@@ -393,49 +461,11 @@ void pdRender(GLFWwindow *window)
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     
     GLuint modelMatLoc = glGetUniformLocation(normalPositionProgram.programID, "modelMat");
-    GLuint viewMatLoc = glGetUniformLocation(normalPositionProgram.programID, "viewMat");
-    GLuint projMatLoc = glGetUniformLocation(normalPositionProgram.programID, "projMat");
+    GLuint viewMatLoc  = glGetUniformLocation(normalPositionProgram.programID, "viewMat");
+    GLuint projMatLoc  = glGetUniformLocation(normalPositionProgram.programID, "projMat");
     glUniformMatrix4fv(modelMatLoc, 1, GL_FALSE, glm::value_ptr(modelMat));
     glUniformMatrix4fv(viewMatLoc, 1, GL_FALSE, glm::value_ptr(viewMat));
     glUniformMatrix4fv(projMatLoc, 1, GL_FALSE, glm::value_ptr(projMat));
-    
-    GLuint npIndex = glGetSubroutineUniformLocation(normalPositionProgram.programID, GL_FRAGMENT_SHADER, "renderPass");
-    if (npIndex == -1)
-    {
-        std::cout << "Subroutine indexing error" << std::endl;
-        return;
-    }
-    
-    GLuint npPass1 = glGetSubroutineIndex(normalPositionProgram.programID, GL_FRAGMENT_SHADER, "pass1");
-    glUniformSubroutinesuiv(GL_FRAGMENT_SHADER, 1, &npPass1);
-    
-    glDrawElements(GL_TRIANGLES, obj.nElements3 * 3, GL_UNSIGNED_SHORT, 0);
-    
-    // pass #2
-    
-    glBindFramebuffer(GL_FRAMEBUFFER, dataFB[POSITION]);
-    
-    glViewport(0, 0, w, h);
-    
-    glClearColor(0.0, 0.0, 0.0, 0.0);
-    glEnable(GL_DEPTH_TEST);
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-    
-    GLuint npPass2 = glGetSubroutineIndex(normalPositionProgram.programID, GL_FRAGMENT_SHADER, "pass2");
-    glUniformSubroutinesuiv(GL_FRAGMENT_SHADER, 1, &npPass2);
-    
-    glDrawElements(GL_TRIANGLES, obj.nElements3 * 3, GL_UNSIGNED_SHORT, 0);
-    
-    // pass #3
-    
-    glBindFramebuffer(GL_FRAMEBUFFER, dataFB[PHONG]);
-    
-    glViewport(0, 0, w, h);
-    
-    glClearColor(0.0, 0.0, 0.0, 0.0);
-    glEnable(GL_DEPTH_TEST);
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-    
     
     GLuint lightPositionLoc = glGetUniformLocation(normalPositionProgram.programID, "lightPosition");
     GLuint eyePositionLoc   = glGetUniformLocation(normalPositionProgram.programID, "eyePosition");
@@ -457,22 +487,6 @@ void pdRender(GLFWwindow *window)
     glUniform3fv(specularColorLoc, 1, glm::value_ptr(specularColor));
     glUniform1f(shininessLoc, shininess);
     
-    GLuint npPass3 = glGetSubroutineIndex(normalPositionProgram.programID, GL_FRAGMENT_SHADER, "pass3");
-    glUniformSubroutinesuiv(GL_FRAGMENT_SHADER, 1, &npPass3);
-    
-    glDrawElements(GL_TRIANGLES, obj.nElements3 * 3, GL_UNSIGNED_SHORT, 0);
-    
-    
-    // pass #4
-    
-    glBindFramebuffer(GL_FRAMEBUFFER, dataFB[EDGE]);
-    
-    glViewport(0, 0, w, h);
-    
-    glClearColor(0.0, 0.0, 0.0, 0.0);
-    glEnable(GL_DEPTH_TEST);
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-    
     GLuint inverseSizeLoc = glGetUniformLocation(normalPositionProgram.programID, "inverseSize");
     glm::vec2 inverseSize(1 / (float)w, 1 / (float)h);
     glUniform2fv(inverseSizeLoc, 1, glm::value_ptr(inverseSize));
@@ -481,15 +495,44 @@ void pdRender(GLFWwindow *window)
                                                    "edgeThreshold");
     glUniform1f(edgeThresholdLoc, edgeThreshold);
     
-    glActiveTexture(GL_TEXTURE1);
+    GLuint isViewLoc = glGetUniformLocation(normalPositionProgram.programID, "isView");
+    glUniform1i(isViewLoc, isView);
+    
+    glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, dataTexture[PHONG]);
     GLuint ptLoc = glGetUniformLocation(normalPositionProgram.programID, "positionTex");
-    glUniform1i(ptLoc, 1);
+    glUniform1i(ptLoc, 0);
     
-    GLuint npPass4 = glGetSubroutineIndex(normalPositionProgram.programID, GL_FRAGMENT_SHADER, "pass4");
-    glUniformSubroutinesuiv(GL_FRAGMENT_SHADER, 1, &npPass4);
+    GLuint npIndex = glGetSubroutineUniformLocation(normalPositionProgram.programID, GL_FRAGMENT_SHADER, "renderPass");
+    if (npIndex == -1)
+    {
+        std::cout << "Subroutine indexing error" << std::endl;
+        return;
+    }
     
-    glDrawElements(GL_TRIANGLES, obj.nElements3 * 3, GL_UNSIGNED_SHORT, 0);
+    for(int i = 0 ; i < 4; i++) {
+        glBindFramebuffer(GL_FRAMEBUFFER, dataFB[i]);
+        
+        glViewport(0, 0, w, h);
+        
+        glClearColor(0.0, 0.0, 0.0, 0.0);
+        glEnable(GL_DEPTH_TEST);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        
+        std::string pass = "pass1";
+        pass[4] = '1' + i;
+        GLuint npPass = glGetSubroutineIndex(normalPositionProgram.programID,
+                                             GL_FRAGMENT_SHADER,
+                                             pass.c_str());
+        glUniformSubroutinesuiv(GL_FRAGMENT_SHADER, 1, &npPass);
+        
+        glDrawElements(GL_TRIANGLES, obj.nElements3 * 3, GL_UNSIGNED_SHORT, 0);
+        
+    }
+    GLenum e = glGetError();
+    if(e) {
+        std::cout<<"Error "<<e<<std::endl;
+    }
     
     //
     // Principal Direction 1 render
@@ -542,8 +585,8 @@ void pdRender(GLFWwindow *window)
     glClear(GL_COLOR_BUFFER_BIT);
     
     GLuint pdTextureLoc = glGetUniformLocation(usProgram.programID, "pdTexture");
-    glUniform1i(pdTextureLoc, 2);
-    glActiveTexture(GL_TEXTURE2);
+    glUniform1i(pdTextureLoc, 0);
+    glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, pdTexture);
     
     enableCaseTestLoc = glGetUniformLocation(usProgram.programID, "enableCaseTest");
@@ -557,15 +600,15 @@ void pdRender(GLFWwindow *window)
     
     glUseProgram(sdProgram.programID);
     
-//    GLuint index = glGetSubroutineUniformLocation(sdProgram.programID, GL_FRAGMENT_SHADER, "renderPass");
-//    if (index == -1)
-//    {
-//        std::cout << "Subroutine indexing error" << std::endl;
-//        return;
-//    }
+    GLuint index = glGetSubroutineUniformLocation(sdProgram.programID, GL_FRAGMENT_SHADER, "renderPass");
+    if (index == -1)
+    {
+        std::cout << "Subroutine indexing error" << std::endl;
+        return;
+    }
     
-//    GLuint pass2 = glGetSubroutineIndex(sdProgram.programID, GL_FRAGMENT_SHADER, "pass2");
-//    glUniformSubroutinesuiv(GL_FRAGMENT_SHADER, 1, &pass2);
+    GLuint sdPass1 = glGetSubroutineIndex(sdProgram.programID, GL_FRAGMENT_SHADER, "pass1");
+    glUniformSubroutinesuiv(GL_FRAGMENT_SHADER, 1, &sdPass1);
     
     for (int i = 0; i < sdCount; i++)
     {
@@ -578,21 +621,61 @@ void pdRender(GLFWwindow *window)
         glClear(GL_COLOR_BUFFER_BIT);
         
         GLuint testTexLoc = glGetUniformLocation(sdProgram.programID, "pdTex");
-        glUniform1i(testTexLoc, 3 + i % 2);
-        glActiveTexture(GL_TEXTURE3 + i % 2);
+        glUniform1i(testTexLoc, i % 2);
+        glActiveTexture(GL_TEXTURE0 + i % 2);
         GLuint tex = i == 0 ? usTexture : sdTexture[(i - 1) % 2];
         glBindTexture(GL_TEXTURE_2D, tex);
         
-        glActiveTexture(GL_TEXTURE6);
+        glActiveTexture(GL_TEXTURE2);
         glBindTexture(GL_TEXTURE_2D, dataTexture[EDGE]);
         GLuint positionTexLoc = glGetUniformLocation(sdProgram.programID, "edgeTex");
-        glUniform1i(positionTexLoc, 6);
+        glUniform1i(positionTexLoc, 2);
         
         GLuint inverseSizeLoc = glGetUniformLocation(sdProgram.programID, "inverseSize");
         glUniform2fv(inverseSizeLoc, 1, glm::value_ptr(inverseSize));
         
         glDrawArrays(GL_TRIANGLES, 0, 6);
     }
+    
+    // angle quantization
+    
+    glBindFramebuffer(GL_FRAMEBUFFER, angleFB);
+    glBindVertexArray(quadVAO);
+    glViewport(0, 0, w, h);
+    
+    glClearColor(0.0, 0.0, 0.0, 0.0);
+    glClear(GL_COLOR_BUFFER_BIT);
+    
+    GLuint sdPass2 = glGetSubroutineIndex(sdProgram.programID, GL_FRAGMENT_SHADER, "pass2");
+    glUniformSubroutinesuiv(GL_FRAGMENT_SHADER, 1, &sdPass2);
+    
+    std::string tamvar = "tam0";
+    GLenum texId[TONE_COUNT] = {GL_TEXTURE0, GL_TEXTURE1, GL_TEXTURE2, GL_TEXTURE3, GL_TEXTURE4, GL_TEXTURE5};
+    for (int i = 0; i < TONE_COUNT; i++)
+    {
+        // std::cout << "Texture Activate: tamvar = " << tamvar << std ::endl;
+        GLuint ttLoc = glGetUniformLocation(sdProgram.programID, tamvar.c_str());
+        glUniform1i(ttLoc, i);
+        glActiveTexture(texId[i]);
+        glBindTexture(GL_TEXTURE_2D, TAMTexture[i]);
+        tamvar[3]++;
+    }
+    
+    int texIndex = (sdCount - 1) % 2;
+    GLuint testTexLoc = glGetUniformLocation(sdProgram.programID, "pdTex");
+    glUniform1i(testTexLoc, 6);
+    glActiveTexture(GL_TEXTURE6);
+    glBindTexture(GL_TEXTURE_2D, sdTexture[texIndex]);
+    GLuint phongTexLoc = glGetUniformLocation(sdProgram.programID, "phong");
+    glUniform1i(phongTexLoc, 7);
+    glActiveTexture(GL_TEXTURE7);
+    glBindTexture(GL_TEXTURE_2D, dataTexture[PHONG]);
+    
+    glDrawArrays(GL_TRIANGLES, 0, 6);
+    
+    //
+    // quad
+    //
     
     glUseProgram(quadProgram.programID);
     
@@ -605,12 +688,13 @@ void pdRender(GLFWwindow *window)
     glClear(GL_COLOR_BUFFER_BIT);
     
     GLuint quadTexLoc = glGetUniformLocation(quadProgram.programID, "tex");
-    glUniform1i(quadTexLoc, 5);
-    glActiveTexture(GL_TEXTURE5);
+    glUniform1i(quadTexLoc, 0);
+    glActiveTexture(GL_TEXTURE0);
     if (doSmoothing)
-        glBindTexture(GL_TEXTURE_2D, sdTexture[(sdCount - 1) % 2]);
+        glBindTexture(GL_TEXTURE_2D, angleTexture);
     else
         glBindTexture(GL_TEXTURE_2D, dataTexture[EDGE]);
+//    glBindTexture(GL_TEXTURE_2D, dataTexture[NORMAL]);
     
     glDrawArrays(GL_TRIANGLES, 0, 6);
     
