@@ -15,16 +15,15 @@ uniform vec2 inverseSize;
 uniform float CLOSETOZERO;
 
 // Good Value Cand //
-// TEAPOT
-// OFFSET = 0.00001;
 // CLOSETOZERO = 0.0003; or 0.0005;
 
 uniform bool enableCaseTest;
 
 void main()
 {
+    //
     // init
-    // out_Color = texture(positionTexture, texCoords);
+    //
     vec3 np = texture(normalTexture, texCoords).xyz;
     vec3 pp = texture(positionTexture, texCoords).xyz;
 
@@ -43,14 +42,17 @@ void main()
     vec3 n2 = texture(normalTexture, vec2(texCoords.x, biasedTexCoords.y)).xyz;
     vec3 p2 = texture(positionTexture, vec2(texCoords.x, biasedTexCoords.y)).xyz;
 
-    // create ray
-    vec3 tempvec = normalize(p1 - pp);
-    vec3 localAxis2 = cross(np, tempvec);
+    //
+    // Create Ray
+    //
+    vec3 tempvector = normalize(p1 - pp);
+    vec3 localAxis2 = cross(np, tempvector);
     vec3 localAxis1 = cross(np, localAxis2);
 
+    // Local Frame
     mat4 localbasis = mat4(vec4(localAxis1, 0), vec4(localAxis2, 0), vec4(np, 0), vec4(0, 0, 0, 1));
     localbasis = transpose(localbasis);
-    mat4 localorigin = mat4(vec4(1, 0, 0, 0), vec4(0, 1, 0, 0), vec4(0, 0, 1, 0), vec4(-pp.x, -pp.y, 0, 1));
+    mat4 localorigin = mat4(vec4(1, 0, 0, 0), vec4(0, 1, 0, 0), vec4(0, 0, 1, 0), vec4(-pp.x, -pp.y, -pp.z, 1));
     mat4 localframe = localbasis * localorigin;
 
     p1 = (localframe * vec4(p1, 1)).xyz;

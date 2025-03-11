@@ -85,7 +85,7 @@ Program quadProgram;
 GLuint quadVAO;
 GLuint quadVBO;
 
-GLuint finalTexture;
+GLint finalTexture = -1;
 
 float quadVertices[] = {
     // positions   // texCoords
@@ -591,6 +591,8 @@ void pdRender(GLFWwindow *window)
     // test values
 //    GLuint OFFSETLoc = glGetUniformLocation(pdProgram.programID, "OFFSET");
 //    glUniform1f(OFFSETLoc, testOffset);
+    GLuint inverseSizeLocc = glGetUniformLocation(pdProgram.programID, "inverseSize");
+    glUniform2fv(inverseSizeLocc, 1, glm::value_ptr(inverseSize));
     GLuint enableCaseTestLoc = glGetUniformLocation(pdProgram.programID, "enableCaseTest");
     glUniform1i(enableCaseTestLoc, enableCaseTest);
     GLuint closeToZeroLoc = glGetUniformLocation(pdProgram.programID, "CLOSETOZERO");
@@ -718,6 +720,7 @@ void pdRender(GLFWwindow *window)
     GLuint quadTexLoc = glGetUniformLocation(quadProgram.programID, "tex");
     glUniform1i(quadTexLoc, 0);
     glActiveTexture(GL_TEXTURE0);
+    if(finalTexture < 0) finalTexture = angleTexture;
     glBindTexture(GL_TEXTURE_2D, finalTexture);
     
     glDrawArrays(GL_TRIANGLES, 0, 6);
