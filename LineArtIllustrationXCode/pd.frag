@@ -51,12 +51,12 @@ void main()
     // Create Ray
     //
     vec3 tempvector = normalize(p1 - pp);
-    vec3 localAxis2 = cross(np, tempvector);
+    vec3 localAxis2 = normalize(cross(np, tempvector));
     vec3 localAxis1 = cross(np, localAxis2);
 
     // Local Frame
     mat4 localbasis = mat4(vec4(localAxis1, 0), vec4(localAxis2, 0), vec4(np, 0), vec4(0, 0, 0, 1));
-    localbasis = transpose(localbasis);
+//    localbasis = transpose(localbasis); // 헷갈림...
     mat4 localorigin = mat4(vec4(1, 0, 0, 0), vec4(0, 1, 0, 0), vec4(0, 0, 1, 0), vec4(-pp.x, -pp.y, -pp.z, 1));
     mat4 localframe = localbasis * localorigin;
 
@@ -78,7 +78,7 @@ void main()
     float D = B * B - 4 * A * C;
 
     vec3 maxPD, minPD;
-    int umbilic = 0;
+    int umbilic = 1;
 
     vec3 caseTest = vec3(0);
     
@@ -126,7 +126,7 @@ void main()
         // mark fourth color as 1.
         // out onto new (texture)
         // and read once again to fill this points.
-        umbilic = 1;
+        umbilic = 0;
     }
     else
     {
@@ -152,7 +152,7 @@ void main()
     maxPD = (inverse(localbasis) * vec4(maxPD, 0)).xyz;
     minPD = (inverse(localbasis) * vec4(minPD, 0)).xyz;
 
-    // if umbilic, 4-th color is 1, otherwise 0.
+    // if umbilic, 4-th color is 0, otherwise 1.
     if (enableCaseTest)
         out_Color = vec4(caseTest, umbilic);
     else

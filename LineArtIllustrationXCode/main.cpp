@@ -70,7 +70,7 @@ GLenum usTexDrawBuffers[1] = {GL_COLOR_ATTACHMENT0};
 // smooth directions
 
 const int SMOOTHING_COUNT = 6;
-int sdCount = 2;
+int sdCount = 6;
 Program sdProgram;
 GLuint sdFB[SMOOTHING_COUNT], angleFB;
 GLuint sdTexture[2], angleTexture;
@@ -118,7 +118,7 @@ void glGBIPTexture2D(GLuint *texture, int w, int h)
 {
     glGenTextures(1, texture);
     glBindTexture(GL_TEXTURE_2D, *texture);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, 0);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, w, h, 0, GL_RGBA, GL_FLOAT, 0);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 }
@@ -245,12 +245,6 @@ void keyCallback(GLFWwindow *window, int key, int scancode, int action, int mods
         finalTexture = angleTexture;
         std::cout << "Angle Texture" << std::endl;
     }
-
-
-//    else if (key == GLFW_KEY_V && action == GLFW_PRESS) {
-//        isView = !isView;
-//        std::cout << "isView: " << isView << std::endl;
-//    }
 }
 
 
@@ -292,14 +286,25 @@ void tamTexLoad()
     glBindTexture(GL_TEXTURE_2D, 0);
 }
 
+void glErr(const std::string& message) {
+   GLint err = glGetError();
+   if (err != GL_NO_ERROR) {
+      printf("%08X ", err);
+      std::cerr << "GL Error: " << message << std::endl;
+   }
+}
+
+
 void pdInit(GLFWwindow *window)
 {
     // Question. Call below function at first cause the error 1282(Invalid Operation).
     // Case1. XCode. Previous project on VSCode worked fine, but XCode not.
     // Case2. Another.... Something....
-    // tamTexLoad()
+    tamTexLoad();
+    std::cout<<"Error? "<<glGetError()<<std::endl; // 0
+    glErr("after tamTexLoad(): TAM Texture Loading");
     
-    obj.loadObject("obj", "FinalBaseMesh.obj");
+    obj.loadObject("obj", "teapot.obj");
     
     //
     // Normal & Position program
@@ -314,16 +319,20 @@ void pdInit(GLFWwindow *window)
     glBindVertexArray(normalVAO);
     
     glGBDArrayBuffer(GL_ARRAY_BUFFER, &positionVBO, sizeof(glm::vec3) * obj.nVertices, obj.vertices.data());
+    glErr("after glGBDArrayBuffer: positionVBO");
     
     glEnableVertexAttribArray(0);
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), 0);
     
     glGBDArrayBuffer(GL_ARRAY_BUFFER, &normalVBO, sizeof(glm::vec3) * obj.nSyncedNormals, obj.syncedNormals.data());
+    glErr("after glGBDArrayBuffer: normalVBO");
     
     glEnableVertexAttribArray(1);
     glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), 0);
+    glErr("after glVertexAttribPointer: normalVAO");
     
     glGBDArrayBuffer(GL_ELEMENT_ARRAY_BUFFER, &vertexElement, sizeof(glm::u16vec3) * obj.nElements3, obj.elements3.data());
+    glErr("after glGBDArrayBuffer: vertexElement");
     
     // framebuffer
     
@@ -333,6 +342,7 @@ void pdInit(GLFWwindow *window)
     glGenRenderbuffers(1, &renderBufferobject);
     glBindRenderbuffer(GL_RENDERBUFFER, renderBufferobject);
     glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, w, h);
+    glErr("after glRenderbufferStorage: renderBufferobject");
     
     for(int i = 0; i < 4; i++) {
         glGenFramebuffers(1, &dataFB[i]);
@@ -354,6 +364,7 @@ void pdInit(GLFWwindow *window)
         if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
             std::cout << "ERROR::FRAMEBUFFER:: Framebuffer is not complete!" << std::endl;
     }
+    glErr("after glFramebufferTexture2D: dataFB, dataTexture");
     
     //
     // umbilic unsolved principal direction
@@ -371,6 +382,7 @@ void pdInit(GLFWwindow *window)
     
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, pdTexture, 0);
     glDrawBuffer(GL_COLOR_ATTACHMENT0);
+    glErr("after glFramebufferTexture2D: pdTexture");
     
     if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
         std::cout << "ERROR::FRAMEBUFFER:: Framebuffer is not complete!" << std::endl;
@@ -387,6 +399,7 @@ void pdInit(GLFWwindow *window)
     glBindFramebuffer(GL_FRAMEBUFFER, usFB);
     
     glGBIPTexture2D(&usTexture, w, h);
+    glErr("after glFramebufferTexture2D: usTexture");
     
     glFramebufferTexture2D(GL_FRAMEBUFFER, usTexDrawBuffers[0], GL_TEXTURE_2D, usTexture, 0);
     glDrawBuffers(1, usTexDrawBuffers);
@@ -423,6 +436,8 @@ void pdInit(GLFWwindow *window)
             std::cout << "ERROR::FRAMEBUFFER " << i << "-th:: Framebuffer is not complete! Code " << glCheckFramebufferStatus(GL_FRAMEBUFFER) << std::endl;
     }
     
+    glErr("after glFramebufferTexture2D: sdTexture[0], sdTexture[1]");
+    
     // quantize angle fb
     glGenFramebuffers(1, &angleFB);
     glBindFramebuffer(GL_FRAMEBUFFER, angleFB);
@@ -433,6 +448,7 @@ void pdInit(GLFWwindow *window)
                          GL_TEXTURE_2D,
                          angleTexture, 0);
     glDrawBuffer(angleTexDrawBuffers[0]);
+    glErr("after glFramebufferTexture2D: angleTexture");
     
     if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
         std::cout << "ERROR::FRAMEBUFFER Framebuffer is not complete! Code " << glCheckFramebufferStatus(GL_FRAMEBUFFER) << std::endl;
@@ -461,7 +477,7 @@ void pdInit(GLFWwindow *window)
     glEnableVertexAttribArray(1);
     glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void *)(2 * sizeof(float)));
     
-    tamTexLoad();
+//    tamTexLoad();
 }
 
 //
@@ -470,12 +486,19 @@ void pdInit(GLFWwindow *window)
 
 void pdRender(GLFWwindow *window)
 {
-    
+    //
     glm::mat4 modelMat = glm::mat4({{1, 0, 0, 0},
                                     {0, 1, 0, 0},
                                     {0, 0, 1, 0},
-                                    {0, -7, 0, 1}});
-    modelMat = glm::scale(glm::vec3(0.2)) * modelMat;
+                                    {0, -1.5, 0, 1}});
+    modelMat = glm::scale(glm::vec3(0.8)) * modelMat;
+
+    // FinalBaseMesh(Human)
+//    glm::mat4 modelMat = glm::mat4({{1, 0, 0, 0},
+//                                    {0, 1, 0, 0},
+//                                    {0, 0, 1, 0},
+//                                    {0, -7, 0, 1}});
+//    modelMat = glm::scale(glm::vec3(0.2)) * modelMat;
     glm::mat4 rotateX = glm::rotate(cameraPhi, glm::vec3(1, 0, 0));
     glm::mat4 rotateY = glm::rotate(cameraTheta, glm::vec3(0, 1, 0));
     glm::vec3 eye(0, 0, 5);
@@ -605,8 +628,8 @@ void pdRender(GLFWwindow *window)
     // test values
 //    GLuint OFFSETLoc = glGetUniformLocation(pdProgram.programID, "OFFSET");
 //    glUniform1f(OFFSETLoc, testOffset);
-    GLuint inverseSizeLocc = glGetUniformLocation(pdProgram.programID, "inverseSize");
-    glUniform2fv(inverseSizeLocc, 1, glm::value_ptr(inverseSize));
+    inverseSizeLoc = glGetUniformLocation(pdProgram.programID, "inverseSize");
+    glUniform2fv(inverseSizeLoc, 1, glm::value_ptr(inverseSize));
     GLuint enableCaseTestLoc = glGetUniformLocation(pdProgram.programID, "enableCaseTest");
     glUniform1i(enableCaseTestLoc, enableCaseTest);
     GLuint closeToZeroLoc = glGetUniformLocation(pdProgram.programID, "CLOSETOZERO");
@@ -627,6 +650,9 @@ void pdRender(GLFWwindow *window)
     
     glClearColor(0.0, 0.0, 0.0, 0.0);
     glClear(GL_COLOR_BUFFER_BIT);
+    
+    inverseSizeLoc = glGetUniformLocation(usProgram.programID, "inverseSize");
+    glUniform2fv(inverseSizeLoc, 1, glm::value_ptr(inverseSize));
     
     GLuint pdTextureLoc = glGetUniformLocation(usProgram.programID, "pdTexture");
     glUniform1i(pdTextureLoc, 0);
@@ -734,7 +760,7 @@ void pdRender(GLFWwindow *window)
     GLuint quadTexLoc = glGetUniformLocation(quadProgram.programID, "tex");
     glUniform1i(quadTexLoc, 0);
     glActiveTexture(GL_TEXTURE0);
-    if(finalTexture < 0) finalTexture = angleTexture;
+    if(finalTexture < 0) finalTexture = pdTexture;
     glBindTexture(GL_TEXTURE_2D, finalTexture);
     
     glDrawArrays(GL_TRIANGLES, 0, 6);

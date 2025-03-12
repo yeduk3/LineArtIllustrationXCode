@@ -6,7 +6,8 @@ in vec2 texCoords;
 
 uniform sampler2D pdTexture;
 
-const float OFFSET = 0.04;
+const float stepSize = 10;
+uniform vec2 inverseSize;
 uniform bool enableCaseTest;
 
 bool texInRange(vec2 texCoord)
@@ -22,9 +23,13 @@ bool texInRange(vec2 texCoord)
 void main()
 {
     vec4 pd = texture(pdTexture, texCoords);
-
+    
+    float dx = inverseSize.x * stepSize;
+    float dy = inverseSize.y * stepSize;
+    vec2 direction[4] = vec2[4](vec2(0, dy), vec2(dx, 0), vec2(0, -dy), vec2(-dx, 0));
+    
     // if umbilic,
-    if (pd.w == 1)
+    if (pd.w == 0)
     {
         if (enableCaseTest)
             pd = vec4(1, 1, 1, 1);
@@ -32,38 +37,34 @@ void main()
         {
             // find 4 neighboring, not umbilic, points
             vec2 neighbor;
-            vec2 direction[4] = vec2[4](vec2(0, OFFSET), vec2(OFFSET, 0), vec2(0, -OFFSET * 10), vec2(-OFFSET, 0));
 
             vec4 sum = vec4(0);
             int count = 0;
             for (int i = 0; i < 4; i++)
             {
                 neighbor = texCoords;
-                vec4 nTex = vec4(1);
+                vec4 nTex = vec4(0);
                 int distByOffset = 0;
-                while (texInRange(neighbor + direction[i]))
+                
+                while (texInRange(neighbor + direction[i]) && nTex.a == 0)
                 {
                     neighbor += direction[i];
                     nTex = texture(pdTexture, neighbor);
                     distByOffset++;
-
-                    // found!
-                    if (nTex.a != 1 /* && abs(dot(nTex.xyz, vec3(1))) > 0.2*/)
-                        break;
                 }
 
                 // if found,
-                if (nTex.a != 1)
+                if (nTex.a == 1)
                 {
                     sum += nTex * distByOffset;
                     count += distByOffset;
-                    break;
+//                    break;
                 }
             }
 
             sum /= float(count);
 
-            pd = sum;
+            pd = vec4(sum.xyz, 1);
         }
     }
 
