@@ -140,6 +140,14 @@ float max(const float &a, const float &b)
 }
 }
 
+float fovy = 45 * PI / 180.0f;
+
+void scrollCallback(GLFWwindow *window, double xoffset, double yoffset)
+{
+    fovy -= yoffset / 10;
+    fovy = comparator::max(0.01f, comparator::min(fovy, PI - 0.01f));
+}
+
 void cursorPosCallback(GLFWwindow *window, double xpos, double ypos)
 {
     static double lastX = 0;
@@ -165,8 +173,10 @@ void cursorPosCallback(GLFWwindow *window, double xpos, double ypos)
 //float testOffset = 0.00001;
 //float testOffsetDelta = 0.00001;
 bool enableCaseTest = false;
-float testCloseToZero = 0.0005;
-float testCloseToZeroDelta = 0.0001;
+//float testCloseToZero = 0.0005;
+//float testCloseToZeroDelta = 0.0001;
+float testCloseToZero = 0.0001;
+float testCloseToZeroDelta = 0.00001;
 
 bool doSmoothing = true;
 //bool isView = false;
@@ -218,10 +228,14 @@ void keyCallback(GLFWwindow *window, int key, int scancode, int action, int mods
     else if (key == GLFW_KEY_E && action == GLFW_PRESS) {
         finalTexture = dataTexture[EDGE];
         std::cout << "Edge Detection Texture" << std::endl;
-    }
+    }
     else if (key == GLFW_KEY_D && action == GLFW_PRESS) {
         finalTexture = pdTexture;
         std::cout << "Principal Direction Texture" << std::endl;
+    }
+    else if (key == GLFW_KEY_U && action == GLFW_PRESS) {
+        finalTexture = usTexture;
+        std::cout << "Umbilic Solver Texture" << std::endl;
     }
     else if (key == GLFW_KEY_S && action == GLFW_PRESS) {
         finalTexture = sdTexture[(sdCount - 1) % 2];
@@ -285,7 +299,7 @@ void pdInit(GLFWwindow *window)
     // Case2. Another.... Something....
     // tamTexLoad()
     
-    obj.loadObject("obj", "teapot.obj");
+    obj.loadObject("obj", "FinalBaseMesh.obj");
     
     //
     // Normal & Position program
@@ -460,8 +474,8 @@ void pdRender(GLFWwindow *window)
     glm::mat4 modelMat = glm::mat4({{1, 0, 0, 0},
                                     {0, 1, 0, 0},
                                     {0, 0, 1, 0},
-                                    {0, -1.5, 0, 1}});
-    // modelMat = glm::scale(glm::vec3(0.01)) * modelMat;
+                                    {0, -7, 0, 1}});
+    modelMat = glm::scale(glm::vec3(0.2)) * modelMat;
     glm::mat4 rotateX = glm::rotate(cameraPhi, glm::vec3(1, 0, 0));
     glm::mat4 rotateY = glm::rotate(cameraTheta, glm::vec3(0, 1, 0));
     glm::vec3 eye(0, 0, 5);
@@ -470,7 +484,7 @@ void pdRender(GLFWwindow *window)
     
     int w, h;
     glfwGetFramebufferSize(window, &w, &h);
-    glm::mat4 projMat = glm::perspective(60 / (float)180 * PI, w / (float)h, 0.01f, 1000.0f);
+    glm::mat4 projMat = glm::perspective(fovy, w / (float)h, 0.01f, 1000.0f);
     
     //
     // Normal & Position texture render
@@ -503,7 +517,7 @@ void pdRender(GLFWwindow *window)
     GLuint shininessLoc     = glGetUniformLocation(normalPositionProgram.programID, "shininess");
 
     glm::vec3 lightPosition(10, 10, 5);
-    glm::vec3 lightColor(140);
+    glm::vec3 lightColor(160);
     glm::vec3 diffuseColor(1, 1, 1);
     glm::vec3 specularColor(0.33, 0.33, 0.33);
     float shininess = 12;
@@ -771,6 +785,7 @@ int main()
     
     glfwSetCursorPosCallback(window, cursorPosCallback);
     glfwSetKeyCallback(window, keyCallback);
+    glfwSetScrollCallback(window, scrollCallback);
     
     // render
     

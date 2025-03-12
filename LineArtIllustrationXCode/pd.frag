@@ -19,6 +19,8 @@ uniform float CLOSETOZERO;
 
 uniform bool enableCaseTest;
 
+const int k = 1;
+
 void main()
 {
     //
@@ -26,16 +28,19 @@ void main()
     //
     vec3 np = texture(normalTexture, texCoords).xyz;
     vec3 pp = texture(positionTexture, texCoords).xyz;
+    
+    float dx = inverseSize.x * k;
+    float dy = inverseSize.y * k;
 
     vec2 biasedTexCoords = vec2(texCoords);
-    if (biasedTexCoords.x + inverseSize.x >= 1.0)
-        biasedTexCoords.x -= inverseSize.x;
+    if (biasedTexCoords.x + dx >= 1.0)
+        biasedTexCoords.x -= dx;
     else
-        biasedTexCoords.x += inverseSize.x;
-    if (biasedTexCoords.y + inverseSize.y >= 1.0)
-        biasedTexCoords.y -= inverseSize.y;
+        biasedTexCoords.x += dx;
+    if (biasedTexCoords.y + dy >= 1.0)
+        biasedTexCoords.y -= dy;
     else
-        biasedTexCoords.y += inverseSize.y;
+        biasedTexCoords.y += dy;
 
     vec3 n1 = texture(normalTexture, vec2(biasedTexCoords.x, texCoords.y)).xyz;
     vec3 p1 = texture(positionTexture, vec2(biasedTexCoords.x, texCoords.y)).xyz;
@@ -60,11 +65,11 @@ void main()
     n1 = (localframe * vec4(n1, 0)).xyz;
     n2 = (localframe * vec4(n2, 0)).xyz;
 
-    vec4 rayp = vec4(0);
+    vec4 rayp  = vec4(0);
     vec2 ratio = vec2(n1.x / n1.z, n1.y / n1.z);
-    vec4 ray1 = vec4(ratio.x, ratio.y, p1.x - (p1.z * ratio.x), p1.y - (p1.z * ratio.y));
-    ratio = vec2(n2.x / n2.z, n2.y / n2.z);
-    vec4 ray2 = vec4(ratio.x, ratio.y, p2.x - (p2.z * ratio.x), p2.y - (p2.z * ratio.y));
+    vec4 ray1  = vec4(ratio.x, ratio.y, p1.x - (p1.z * ratio.x), p1.y - (p1.z * ratio.y));
+         ratio = vec2(n2.x / n2.z, n2.y / n2.z);
+    vec4 ray2  = vec4(ratio.x, ratio.y, p2.x - (p2.z * ratio.x), p2.y - (p2.z * ratio.y));
 
     // Handling Degeneracies
     float A = ray1.x * ray2.y - ray2.x * ray1.y;
@@ -76,6 +81,7 @@ void main()
     int umbilic = 0;
 
     vec3 caseTest = vec3(0);
+    
     if (abs(A) < CLOSETOZERO && abs(B) < 2 * CLOSETOZERO)
     {
         // Locally planar cases
@@ -85,11 +91,11 @@ void main()
         vec3 yAxis = vec3(0, 1, 0);
         vec3 zAxis = vec3(0, 0, 1);
         // not parallel test
-        if (pow(dot(np, xAxis), 2) != dot(np, np))
+        if (abs(dot(np, xAxis)) != 1)
         {
             maxPD = cross(xAxis, np);
         }
-        else if (pow(dot(np, yAxis), 2) != dot(np, np))
+        else if (abs(dot(np, yAxis)) != 1)
         {
             maxPD = cross(yAxis, np);
         }
@@ -109,15 +115,16 @@ void main()
         // choose greater curvature. since parabolic curvatures have only one 0 curvature and other not.
         float kk = abs(k1) < abs(k2) ? k1 : k2;
 
-        // dont know what is max
         minPD = normalize(vec3(ray1.z * kk + ray1.x, ray1.w * kk + ray1.y, 0));
         maxPD = cross(np, maxPD);
     }
     else if (D < CLOSETOZERO * CLOSETOZERO)
     {
         // Umbilic points
+        caseTest = vec3(1);
+        
         // mark fourth color as 1.
-        // out onto new framebuffer (texture)
+        // out onto new (texture)
         // and read once again to fill this points.
         umbilic = 1;
     }
@@ -142,8 +149,8 @@ void main()
         minPD = normalize(vec3(ray1.z * k2 + ray1.x, ray1.w * k2 + ray1.y, 0));
     }
 
-    maxPD = (inverse(localbasis) * vec4(maxPD, 1)).xyz;
-    minPD = (inverse(localbasis) * vec4(minPD, 1)).xyz;
+    maxPD = (inverse(localbasis) * vec4(maxPD, 0)).xyz;
+    minPD = (inverse(localbasis) * vec4(minPD, 0)).xyz;
 
     // if umbilic, 4-th color is 1, otherwise 0.
     if (enableCaseTest)

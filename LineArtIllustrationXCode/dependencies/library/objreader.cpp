@@ -119,7 +119,7 @@ void ObjData::loadObject(const std::string &objFileName) {
         // case by case?
         std::vector<GLuint> elem;
 
-        std::regex re("\\d+/\\d+/\\d+");
+        std::regex re("\\d+/\\d*/\\d+");
         auto start = std::sregex_iterator(f.begin(), f.end(), re);
         auto end = std::sregex_iterator();
         while (start != end) {
