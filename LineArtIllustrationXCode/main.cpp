@@ -300,9 +300,8 @@ void pdInit(GLFWwindow *window)
     // Question. Call below function at first cause the error 1282(Invalid Operation).
     // Case1. XCode. Previous project on VSCode worked fine, but XCode not.
     // Case2. Another.... Something....
-    tamTexLoad();
-    std::cout<<"Error? "<<glGetError()<<std::endl; // 0
-    glErr("after tamTexLoad(): TAM Texture Loading");
+//    tamTexLoad();
+//    glErr("after tamTexLoad(): TAM Texture Loading");
     
     obj.loadObject("obj", "teapot.obj");
     
@@ -477,7 +476,7 @@ void pdInit(GLFWwindow *window)
     glEnableVertexAttribArray(1);
     glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void *)(2 * sizeof(float)));
     
-//    tamTexLoad();
+    tamTexLoad();
 }
 
 //

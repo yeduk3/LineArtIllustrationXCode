@@ -72,9 +72,9 @@ void main()
     vec4 ray2  = vec4(ratio.x, ratio.y, p2.x - (p2.z * ratio.x), p2.y - (p2.z * ratio.y));
 
     // Handling Degeneracies
-    float A = ray1.x * ray2.y - ray2.x * ray1.y;
+    float A = ray1.z * ray2.w - ray2.z * ray1.w;
     float B = ray1.x * ray2.w + ray2.y * ray1.z - ray2.x * ray1.w - ray1.y * ray2.z;
-    float C = ray1.z * ray2.w - ray2.z * ray1.w;
+    float C = ray1.x * ray2.y - ray2.x * ray1.y;
     float D = B * B - 4 * A * C;
 
     vec3 maxPD, minPD;
@@ -110,8 +110,8 @@ void main()
         // Locally near parabolic
         caseTest.g = 1.0;
 
-        float k1 = 2 * A / (-B + sqrt(D));
-        float k2 = 2 * A / (-B - sqrt(D));
+        float k1 = (-B + sqrt(D)) / (2 * A);
+        float k2 = (-B - sqrt(D)) / (2 * A);
         // choose greater curvature. since parabolic curvatures have only one 0 curvature and other not.
         float kk = abs(k1) < abs(k2) ? k1 : k2;
 
