@@ -56,7 +56,6 @@ struct Program
             glDeleteShader(shaderID); // Don't leak the shader.
             return false;
         }
-        std::cout << "Shader ID " << shaderID << " compile successed.\n";
         return true;
     }
 
@@ -78,10 +77,10 @@ struct Program
             glAttachShader(programID, vertexShaderID);
         else
         {
+            std::cout << "Vertex Shader: " << vertexShaderName << "(" << vShaderText.length() << ") with ID " << vertexShaderID << " compile failed." << std::endl;
             cleanUp();
             return;
         }
-        std::cout << "Vertex Shader: " << vertexShaderName << "(" << vShaderText.length() << ") created with ID " << vertexShaderID << std::endl;
 
         // Fragment Shader
         const GLchar *fShaderCode = fShaderText.c_str();
@@ -91,10 +90,10 @@ struct Program
             glAttachShader(programID, fragShaderID);
         else
         {
+            std::cout << "Fragment Shader: " << fragShaderName << "(" << fShaderText.length() << ") with ID " << fragShaderID << " compile failed." << std::endl;
             cleanUp();
             return;
         }
-        std::cout << "Fragment Shader: " << fragShaderName << "(" << fShaderText.length() << ") created with ID " << fragShaderID << std::endl;
 
         linkShader();
     }
@@ -175,7 +174,7 @@ struct Program
         }
         else
         {
-            std::cout << "Shader Link Success on Program ID " << programID << std::endl;
+//            std::cout << "Shader Link Success on Program ID " << programID << std::endl;
         }
         glUseProgram(programID);
     }

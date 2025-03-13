@@ -284,6 +284,8 @@ void tamTexLoad()
         }
     }
     glBindTexture(GL_TEXTURE_2D, 0);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    std::cout << "--- TAM Texture Loaded ---" << std::endl;
 }
 
 void glErr(const std::string& message) {
@@ -297,11 +299,8 @@ void glErr(const std::string& message) {
 
 void pdInit(GLFWwindow *window)
 {
-    // Question. Call below function at first cause the error 1282(Invalid Operation).
-    // Case1. XCode. Previous project on VSCode worked fine, but XCode not.
-    // Case2. Another.... Something....
-//    tamTexLoad();
-//    glErr("after tamTexLoad(): TAM Texture Loading");
+    tamTexLoad();
+    glErr("after tamTexLoad(): TAM Texture Loading");
     
     obj.loadObject("obj", "teapot.obj");
     
@@ -309,7 +308,7 @@ void pdInit(GLFWwindow *window)
     // Normal & Position program
     //
     
-    std::cout << "--- Normal & Position Program Init ---\n";
+    std::cout << "- Normal & Position Program Init\n";
     
     normalPositionProgram.loadShader("normalPosition.vert", "normalPosition.frag");
     glUseProgram(normalPositionProgram.programID);
@@ -352,7 +351,7 @@ void pdInit(GLFWwindow *window)
         glFramebufferTexture2D(GL_FRAMEBUFFER,
                                dataTexDrawBuffers[0],
                                GL_TEXTURE_2D,
-                               dataFB[i],
+                               dataTexture[i],
                                0);
         // `glDrawBuffers` set the buffer list to be drawn
         glDrawBuffer(dataTexDrawBuffers[0]);
@@ -369,7 +368,7 @@ void pdInit(GLFWwindow *window)
     // umbilic unsolved principal direction
     //
     
-    std::cout << "--- Principal Direction Program Init ---\n";
+    std::cout << "- Principal Direction Program Init\n";
     
     pdProgram.loadShader("pd.vert", "pd.frag");
     glUseProgram(pdProgram.programID);
@@ -389,7 +388,7 @@ void pdInit(GLFWwindow *window)
     //
     // try to solve umbilic points - uncompleted
     //
-    std::cout << "--- Umbilic Solver Program Init ---\n";
+    std::cout << "- Umbilic Solver Program Init\n";
     
     usProgram.loadShader("umbolicSolver.vert", "umbolicSolver.frag");
     glUseProgram(usProgram.programID);
@@ -409,7 +408,7 @@ void pdInit(GLFWwindow *window)
     //
     // smooth direction
     //
-    std::cout << "--- Smooth Direction Program Init ---\n";
+    std::cout << "- Smooth Direction Program Init\n";
     
     sdProgram.loadShader("smoothingPD.vert", "smoothingPD.frag");
     glUseProgram(sdProgram.programID);
@@ -455,7 +454,7 @@ void pdInit(GLFWwindow *window)
     //
     // test
     //
-    std::cout << "--- Test Program Init ---\n";
+    std::cout << "- Test Program Init\n";
     
     quadProgram.loadShader("quad.vert", "quad.frag");
     
@@ -475,8 +474,6 @@ void pdInit(GLFWwindow *window)
     
     glEnableVertexAttribArray(1);
     glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void *)(2 * sizeof(float)));
-    
-    tamTexLoad();
 }
 
 //
@@ -593,10 +590,8 @@ void pdRender(GLFWwindow *window)
         glDrawElements(GL_TRIANGLES, obj.nElements3 * 3, GL_UNSIGNED_SHORT, 0);
         
     }
-    GLenum e = glGetError();
-    if(e) {
-        std::cout<<"Error "<<e<<std::endl;
-    }
+    
+    glErr("after render dataTexture");
     
     //
     // Principal Direction 1 render
@@ -614,15 +609,14 @@ void pdRender(GLFWwindow *window)
     glClear(GL_COLOR_BUFFER_BIT);
     
     // value below (0 and 1) is same with GL_TEXTURE{value}
-    GLuint normTexLoc = glGetUniformLocation(pdProgram.programID, "normalTexture");
-    glUniform1i(normTexLoc, 0);
-    GLuint posTexLoc = glGetUniformLocation(pdProgram.programID, "positionTexture");
-    glUniform1i(posTexLoc, 1);
-    
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, dataTexture[NORMAL]);
+    GLuint normTexLoc = glGetUniformLocation(pdProgram.programID, "normalTexture");
+    glUniform1i(normTexLoc, 0);
     glActiveTexture(GL_TEXTURE1);
     glBindTexture(GL_TEXTURE_2D, dataTexture[POSITION]);
+    GLuint posTexLoc = glGetUniformLocation(pdProgram.programID, "positionTexture");
+    glUniform1i(posTexLoc, 1);
     
     // test values
 //    GLuint OFFSETLoc = glGetUniformLocation(pdProgram.programID, "OFFSET");
@@ -635,6 +629,7 @@ void pdRender(GLFWwindow *window)
     glUniform1f(closeToZeroLoc, testCloseToZero);
     
     glDrawArrays(GL_TRIANGLES, 0, 6);
+    glErr("after render pdTexture");
     
     //
     // umbolic solver render
@@ -653,15 +648,16 @@ void pdRender(GLFWwindow *window)
     inverseSizeLoc = glGetUniformLocation(usProgram.programID, "inverseSize");
     glUniform2fv(inverseSizeLoc, 1, glm::value_ptr(inverseSize));
     
-    GLuint pdTextureLoc = glGetUniformLocation(usProgram.programID, "pdTexture");
-    glUniform1i(pdTextureLoc, 0);
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, pdTexture);
+    GLuint pdTextureLoc = glGetUniformLocation(usProgram.programID, "pdTexture");
+    glUniform1i(pdTextureLoc, 0);
     
     enableCaseTestLoc = glGetUniformLocation(usProgram.programID, "enableCaseTest");
     glUniform1i(enableCaseTestLoc, enableCaseTest);
     
     glDrawArrays(GL_TRIANGLES, 0, 6);
+    glErr("after render usTexture");
     
     //
     // smoothing pd
@@ -689,11 +685,11 @@ void pdRender(GLFWwindow *window)
         glClearColor(0.0, 0.0, 0.0, 0.0);
         glClear(GL_COLOR_BUFFER_BIT);
         
-        GLuint testTexLoc = glGetUniformLocation(sdProgram.programID, "pdTex");
-        glUniform1i(testTexLoc, i % 2);
         glActiveTexture(GL_TEXTURE0 + i % 2);
         GLuint tex = i == 0 ? usTexture : sdTexture[(i - 1) % 2];
         glBindTexture(GL_TEXTURE_2D, tex);
+        GLuint testTexLoc = glGetUniformLocation(sdProgram.programID, "pdTex");
+        glUniform1i(testTexLoc, i % 2);
         
         glActiveTexture(GL_TEXTURE2);
         glBindTexture(GL_TEXTURE_2D, dataTexture[EDGE]);
@@ -705,6 +701,8 @@ void pdRender(GLFWwindow *window)
         
         glDrawArrays(GL_TRIANGLES, 0, 6);
     }
+    
+    glErr("after render sdTexture");
     
     // angle quantization
     
@@ -719,28 +717,29 @@ void pdRender(GLFWwindow *window)
     glUniformSubroutinesuiv(GL_FRAGMENT_SHADER, 1, &sdPass2);
     
     std::string tamvar = "tam0";
-    GLenum texId[TONE_COUNT] = {GL_TEXTURE0, GL_TEXTURE1, GL_TEXTURE2, GL_TEXTURE3, GL_TEXTURE4, GL_TEXTURE5};
+    GLenum texId = GL_TEXTURE0;
     for (int i = 0; i < TONE_COUNT; i++)
     {
         // std::cout << "Texture Activate: tamvar = " << tamvar << std ::endl;
+        glActiveTexture(texId + i);
+        glBindTexture(GL_TEXTURE_2D, TAMTexture[i]);
         GLuint ttLoc = glGetUniformLocation(sdProgram.programID, tamvar.c_str());
         glUniform1i(ttLoc, i);
-        glActiveTexture(texId[i]);
-        glBindTexture(GL_TEXTURE_2D, TAMTexture[i]);
         tamvar[3]++;
     }
     
     int texIndex = (sdCount - 1) % 2;
-    GLuint testTexLoc = glGetUniformLocation(sdProgram.programID, "pdTex");
-    glUniform1i(testTexLoc, 6);
     glActiveTexture(GL_TEXTURE6);
     glBindTexture(GL_TEXTURE_2D, sdTexture[texIndex]);
-    GLuint phongTexLoc = glGetUniformLocation(sdProgram.programID, "phong");
-    glUniform1i(phongTexLoc, 7);
+    GLuint testTexLoc = glGetUniformLocation(sdProgram.programID, "pdTex");
+    glUniform1i(testTexLoc, 6);
     glActiveTexture(GL_TEXTURE7);
     glBindTexture(GL_TEXTURE_2D, dataTexture[PHONG]);
+    GLuint phongTexLoc = glGetUniformLocation(sdProgram.programID, "phong");
+    glUniform1i(phongTexLoc, 7);
     
     glDrawArrays(GL_TRIANGLES, 0, 6);
+    glErr("after render angleTexture");
     
     //
     // quad
@@ -756,15 +755,17 @@ void pdRender(GLFWwindow *window)
     glClearColor(0.0, 0.0, 0.0, 0.0);
     glClear(GL_COLOR_BUFFER_BIT);
     
-    GLuint quadTexLoc = glGetUniformLocation(quadProgram.programID, "tex");
-    glUniform1i(quadTexLoc, 0);
     glActiveTexture(GL_TEXTURE0);
     if(finalTexture < 0) finalTexture = pdTexture;
     glBindTexture(GL_TEXTURE_2D, finalTexture);
+    GLuint quadTexLoc = glGetUniformLocation(quadProgram.programID, "tex");
+    glUniform1i(quadTexLoc, 0);
     
     glDrawArrays(GL_TRIANGLES, 0, 6);
     
     glfwSwapBuffers(window);
+    
+    glErr("after pdRender");
 }
 
 //

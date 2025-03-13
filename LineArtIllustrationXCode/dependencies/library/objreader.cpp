@@ -169,6 +169,8 @@ void ObjData::loadObject(const std::string &objFileName) {
     file.close();
 
     isOk = true;
+    
+    std::cout << "--- Wavefront Object Loaded ---" << std::endl;
 
     return;
 }
