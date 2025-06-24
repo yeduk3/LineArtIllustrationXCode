@@ -27,6 +27,6 @@ void main()
 //        
 //    }
     
-    worldPosition = worldPos.xyz;
+    worldPosition = worldPos.xyz / worldPos.w;
     normal = in_Normal;
 }

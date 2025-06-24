@@ -26,27 +26,14 @@ void main()
     //
     // init
     //
-    vec3 np = texture(normalTexture, texCoords).xyz;
-    vec3 pp = texture(positionTexture, texCoords).xyz;
+    ivec2 tc = ivec2(gl_FragCoord.xy);
+    vec3 np = texelFetch(normalTexture,   tc, 0).xyz;
+    vec3 pp = texelFetch(positionTexture, tc, 0).xyz;
+    vec3 n1 = texelFetchOffset(normalTexture,   tc, 0, ivec2(1, 0)).xyz;
+    vec3 p1 = texelFetchOffset(positionTexture, tc, 0, ivec2(1, 0)).xyz;
+    vec3 n2 = texelFetchOffset(normalTexture,   tc, 0, ivec2(0, 1)).xyz;
+    vec3 p2 = texelFetchOffset(positionTexture, tc, 0, ivec2(0, 1)).xyz;
     
-    float dx = inverseSize.x * k;
-    float dy = inverseSize.y * k;
-
-    vec2 biasedTexCoords = vec2(texCoords);
-    if (biasedTexCoords.x + dx >= 1.0)
-        biasedTexCoords.x -= dx;
-    else
-        biasedTexCoords.x += dx;
-    if (biasedTexCoords.y + dy >= 1.0)
-        biasedTexCoords.y -= dy;
-    else
-        biasedTexCoords.y += dy;
-
-    vec3 n1 = texture(normalTexture, vec2(biasedTexCoords.x, texCoords.y)).xyz;
-    vec3 p1 = texture(positionTexture, vec2(biasedTexCoords.x, texCoords.y)).xyz;
-    vec3 n2 = texture(normalTexture, vec2(texCoords.x, biasedTexCoords.y)).xyz;
-    vec3 p2 = texture(positionTexture, vec2(texCoords.x, biasedTexCoords.y)).xyz;
-
     //
     // Create Ray
     //
@@ -56,14 +43,13 @@ void main()
 
     // Local Frame
     mat4 localbasis = mat4(vec4(localAxis1, 0), vec4(localAxis2, 0), vec4(np, 0), vec4(0, 0, 0, 1));
-//    localbasis = transpose(localbasis); // 헷갈림...
     mat4 localorigin = mat4(vec4(1, 0, 0, 0), vec4(0, 1, 0, 0), vec4(0, 0, 1, 0), vec4(-pp.x, -pp.y, -pp.z, 1));
     mat4 localframe = localbasis * localorigin;
 
     p1 = (localframe * vec4(p1, 1)).xyz;
     p2 = (localframe * vec4(p2, 1)).xyz;
-    n1 = (localframe * vec4(n1, 0)).xyz;
-    n2 = (localframe * vec4(n2, 0)).xyz;
+    n1 = normalize((localframe * vec4(n1, 0)).xyz);
+    n2 = normalize((localframe * vec4(n2, 0)).xyz);
 
     vec4 rayp  = vec4(0);
     vec2 ratio = vec2(n1.x / n1.z, n1.y / n1.z);
@@ -91,11 +77,11 @@ void main()
         vec3 yAxis = vec3(0, 1, 0);
         vec3 zAxis = vec3(0, 0, 1);
         // not parallel test
-        if (abs(dot(np, xAxis)) != 1)
+        if (abs(dot(np, xAxis)) != 1-CLOSETOZERO)
         {
             maxPD = cross(xAxis, np);
         }
-        else if (abs(dot(np, yAxis)) != 1)
+        else if (abs(dot(np, yAxis)) != 1-CLOSETOZERO)
         {
             maxPD = cross(yAxis, np);
         }

@@ -13,8 +13,14 @@
 #include <thread>
 #include <chrono>
 
-#include "myprogram.hpp"
-#include "objreader.hpp"
+//#include "myprogram.hpp"
+//#include "objreader.hpp"
+//#include "framebuffer.hpp"
+//#define STB_IMAGE_IMPLEMENTATION
+//#include <stb_image.h>
+#include <program.hpp>
+#include <objreader.hpp>
+#include <framebuffer.hpp>
 
 #include <glm/glm.hpp>
 #include <glm/gtc/type_ptr.hpp>
@@ -22,8 +28,6 @@
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtx/transform.hpp>
 
-#define STB_IMAGE_IMPLEMENTATION
-#include "stb_image.h"
 
 //
 // init
@@ -70,7 +74,7 @@ GLenum usTexDrawBuffers[1] = {GL_COLOR_ATTACHMENT0};
 // smooth directions
 
 const int SMOOTHING_COUNT = 6;
-int sdCount = 6;
+int sdCount = 1;
 Program sdProgram;
 GLuint sdFB[SMOOTHING_COUNT], angleFB;
 GLuint sdTexture[2], angleTexture;
@@ -175,12 +179,13 @@ void cursorPosCallback(GLFWwindow *window, double xpos, double ypos)
 bool enableCaseTest = false;
 //float testCloseToZero = 0.0005;
 //float testCloseToZeroDelta = 0.0001;
-float testCloseToZero = 0.0001;
+float testCloseToZero = 1E-5;
 float testCloseToZeroDelta = 0.00001;
 
 bool doSmoothing = true;
 //bool isView = false;
 
+Framebuffer datafbo[4];
 void keyCallback(GLFWwindow *window, int key, int scancode, int action, int mods)
 {
 //    if (key == GLFW_KEY_RIGHT && action > GLFW_RELEASE)
@@ -214,19 +219,23 @@ void keyCallback(GLFWwindow *window, int key, int scancode, int action, int mods
         }
     }
     else if (key == GLFW_KEY_N && action == GLFW_PRESS) {
-        finalTexture = dataTexture[NORMAL];
+//        finalTexture = dataTexture[NORMAL];
+        finalTexture = datafbo[NORMAL].textureIDs[0];
         std::cout << "Normal Texture" << std::endl;
     }
     else if (key == GLFW_KEY_P && action == GLFW_PRESS) {
-        finalTexture = dataTexture[POSITION];
+//        finalTexture = dataTexture[POSITION];
+        finalTexture = datafbo[POSITION].textureIDs[0];
         std::cout << "World Position Texture" << std::endl;
     }
     else if (key == GLFW_KEY_H && action == GLFW_PRESS) {
-        finalTexture = dataTexture[PHONG];
+//        finalTexture = dataTexture[PHONG];
+        finalTexture = datafbo[PHONG].textureIDs[0];
         std::cout << "Phong Texture" << std::endl;
     }
     else if (key == GLFW_KEY_E && action == GLFW_PRESS) {
-        finalTexture = dataTexture[EDGE];
+//        finalTexture = dataTexture[EDGE];
+        finalTexture = datafbo[EDGE].textureIDs[0];
         std::cout << "Edge Detection Texture" << std::endl;
     }
     else if (key == GLFW_KEY_D && action == GLFW_PRESS) {
@@ -255,14 +264,16 @@ void keyCallback(GLFWwindow *window, int key, int scancode, int action, int mods
 // mip: 0 is finest, (MIPMAP_COUNT-1) is coarsest // it is reverse order of the paper
 const int TONE_COUNT = 6;
 const int MIPMAP_COUNT = 4;
-GLuint TAMTexture[TONE_COUNT];
+GLuint TAMTexture[2];
 
-void tamTexLoad()
+// tex tone0~2 --> TAMTexture[0]
+// tex tone3~5 --> TAMTexture[1]
+void tamTexLoad(bool verbose = false)
 {
     std::string filename = "TAM/tone0mip0.png";
     stbi_set_flip_vertically_on_load(1);
-    glGenTextures(TONE_COUNT, TAMTexture);
-    for (int tone = 0; tone < TONE_COUNT; tone++)
+    glGenTextures(2, TAMTexture);
+    for (int tone = 0; tone < 2; tone++)
     {
         glBindTexture(GL_TEXTURE_2D, TAMTexture[tone]);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, 0);
@@ -272,15 +283,28 @@ void tamTexLoad()
             filename[8] = '0' + tone;
             filename[12] = '0' + mip;
             int x, y, n;
-            unsigned char *data = stbi_load(filename.c_str(), &x, &y, &n, 0);
-            std::cout << filename << " Image: x = " << x << ", y = " << y << ", n = " << n << std::endl;
+            unsigned char *data1 = stbi_load(filename.c_str(), &x, &y, &n, 0);
+            filename[8] = '0' + tone + 1;
+            unsigned char *data2 = stbi_load(filename.c_str(), &x, &y, &n, 0);
+            filename[8] = '0' + tone + 2;
+            unsigned char *data3 = stbi_load(filename.c_str(), &x, &y, &n, 0);
+            if(verbose) std::cout << filename << " Image: x = " << x << ", y = " << y << ", n = " << n << std::endl;
+            std::vector<unsigned char> data;
+            int size = x*y;
+            for(int i = 0; i < size; i++) {
+                data.push_back(data1[4*i]);
+                data.push_back(data2[4*i]);
+                data.push_back(data3[4*i]);
+            }
 
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-            glTexImage2D(GL_TEXTURE_2D, mip, GL_RGBA8, x, y, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
-            stbi_image_free(data);
+            glTexImage2D(GL_TEXTURE_2D, mip, GL_RGB8, x, y, 0, GL_RGB, GL_UNSIGNED_BYTE, data.data());
+            stbi_image_free(data1);
+            stbi_image_free(data2);
+            stbi_image_free(data3);
         }
     }
     glBindTexture(GL_TEXTURE_2D, 0);
@@ -288,13 +312,6 @@ void tamTexLoad()
     std::cout << "--- TAM Texture Loaded ---" << std::endl;
 }
 
-void glErr(const std::string& message) {
-   GLint err = glGetError();
-   if (err != GL_NO_ERROR) {
-      printf("%08X ", err);
-      std::cerr << "GL Error: " << message << std::endl;
-   }
-}
 
 
 void pdInit(GLFWwindow *window)
@@ -303,6 +320,7 @@ void pdInit(GLFWwindow *window)
     glErr("after tamTexLoad(): TAM Texture Loading");
     
     obj.loadObject("obj", "teapot.obj");
+    obj.adjustCenter();
     
     //
     // Normal & Position program
@@ -332,32 +350,17 @@ void pdInit(GLFWwindow *window)
     glGBDArrayBuffer(GL_ELEMENT_ARRAY_BUFFER, &vertexElement, sizeof(glm::u16vec3) * obj.nElements3, obj.elements3.data());
     glErr("after glGBDArrayBuffer: vertexElement");
     
-    // framebuffer
+    // attach framebuffer
     
     int w, h;
     glfwGetFramebufferSize(window, &w, &h);
     
-    glGenRenderbuffers(1, &renderBufferobject);
-    glBindRenderbuffer(GL_RENDERBUFFER, renderBufferobject);
-    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, w, h);
-    glErr("after glRenderbufferStorage: renderBufferobject");
-    
+    glErr("before attach");
     for(int i = 0; i < 4; i++) {
-        glGenFramebuffers(1, &dataFB[i]);
-        glBindFramebuffer(GL_FRAMEBUFFER, dataFB[i]);
-        
-        glGBIPTexture2D(&dataTexture[i], w, h);
-        
-        glFramebufferTexture2D(GL_FRAMEBUFFER,
-                               dataTexDrawBuffers[0],
-                               GL_TEXTURE_2D,
-                               dataTexture[i],
-                               0);
-        // `glDrawBuffers` set the buffer list to be drawn
-        glDrawBuffer(dataTexDrawBuffers[0]);
-        
-        
-        glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, renderBufferobject);
+        datafbo[i].init(window);
+        datafbo[i].attachRenderBuffer(GL_DEPTH24_STENCIL8);
+        datafbo[i].attachTexture2D(1, GL_RGBA32F);
+        printf("datafbo's texture id: %d\n", datafbo[i].textureIDs[0]);
         
         if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
             std::cout << "ERROR::FRAMEBUFFER:: Framebuffer is not complete!" << std::endl;
@@ -480,14 +483,17 @@ void pdInit(GLFWwindow *window)
 // render
 //
 
+void bindTex(GLenum texUnit, GLuint tex, GLuint pID, const char* texName) {
+    glActiveTexture(texUnit);
+    glBindTexture(GL_TEXTURE_2D, tex);
+    glUniform1i(glGetUniformLocation(pID, texName),
+                texUnit - GL_TEXTURE0);
+}
+
 void pdRender(GLFWwindow *window)
 {
     //
-    glm::mat4 modelMat = glm::mat4({{1, 0, 0, 0},
-                                    {0, 1, 0, 0},
-                                    {0, 0, 1, 0},
-                                    {0, -1.5, 0, 1}});
-    modelMat = glm::scale(glm::vec3(0.8)) * modelMat;
+    glm::mat4 modelMat = glm::scale(glm::vec3(0.8));
 
     // FinalBaseMesh(Human)
 //    glm::mat4 modelMat = glm::mat4({{1, 0, 0, 0},
@@ -511,58 +517,31 @@ void pdRender(GLFWwindow *window)
     
     glUseProgram(normalPositionProgram.programID);
     
-    glBindFramebuffer(GL_FRAMEBUFFER, dataFB[NORMAL]);
-    glBindVertexArray(normalVAO);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, vertexElement);
+//    normalPositionProgram.
+    normalPositionProgram.setUniform("modelMat", modelMat);
+    normalPositionProgram.setUniform("viewMat", viewMat);
+    normalPositionProgram.setUniform("projMat", projMat);
     
-    glViewport(0, 0, w, h);
-    
-    glClearColor(0.0, 0.0, 0.0, 0.0);
-    glEnable(GL_DEPTH_TEST);
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-    
-    GLuint modelMatLoc = glGetUniformLocation(normalPositionProgram.programID, "modelMat");
-    GLuint viewMatLoc  = glGetUniformLocation(normalPositionProgram.programID, "viewMat");
-    GLuint projMatLoc  = glGetUniformLocation(normalPositionProgram.programID, "projMat");
-    glUniformMatrix4fv(modelMatLoc, 1, GL_FALSE, glm::value_ptr(modelMat));
-    glUniformMatrix4fv(viewMatLoc, 1, GL_FALSE, glm::value_ptr(viewMat));
-    glUniformMatrix4fv(projMatLoc, 1, GL_FALSE, glm::value_ptr(projMat));
-    
-    GLuint lightPositionLoc = glGetUniformLocation(normalPositionProgram.programID, "lightPosition");
-    GLuint eyePositionLoc   = glGetUniformLocation(normalPositionProgram.programID, "eyePosition");
-    GLuint lightColorLoc    = glGetUniformLocation(normalPositionProgram.programID, "lightColor");
-    GLuint diffuseColorLoc  = glGetUniformLocation(normalPositionProgram.programID, "diffuseColor");
-    GLuint specularColorLoc = glGetUniformLocation(normalPositionProgram.programID, "specularColor");
-    GLuint shininessLoc     = glGetUniformLocation(normalPositionProgram.programID, "shininess");
-
     glm::vec3 lightPosition(10, 10, 5);
     glm::vec3 lightColor(160);
     glm::vec3 diffuseColor(1, 1, 1);
     glm::vec3 specularColor(0.33, 0.33, 0.33);
     float shininess = 12;
-
-    glUniform3fv(lightPositionLoc, 1, glm::value_ptr(lightPosition));
-    glUniform3fv(eyePositionLoc, 1, glm::value_ptr(eyePosition));
-    glUniform3fv(lightColorLoc, 1, glm::value_ptr(lightColor));
-    glUniform3fv(diffuseColorLoc, 1, glm::value_ptr(diffuseColor));
-    glUniform3fv(specularColorLoc, 1, glm::value_ptr(specularColor));
-    glUniform1f(shininessLoc, shininess);
+    normalPositionProgram.setUniform("lightPosition", lightPosition);
+    normalPositionProgram.setUniform("eyePosition", eyePosition);
+    normalPositionProgram.setUniform("lightColor", lightColor);
+    normalPositionProgram.setUniform("diffuseColor", diffuseColor);
+    normalPositionProgram.setUniform("specularColor", specularColor);
+    normalPositionProgram.setUniform("shininess", shininess);
     
-    GLuint inverseSizeLoc = glGetUniformLocation(normalPositionProgram.programID, "inverseSize");
     glm::vec2 inverseSize(1 / (float)w, 1 / (float)h);
-    glUniform2fv(inverseSizeLoc, 1, glm::value_ptr(inverseSize));
+    normalPositionProgram.setUniform("inverseSize", inverseSize);
     
-    GLuint edgeThresholdLoc = glGetUniformLocation(normalPositionProgram.programID,
-                                                   "edgeThreshold");
-    glUniform1f(edgeThresholdLoc, edgeThreshold);
-    
-//    GLuint isViewLoc = glGetUniformLocation(normalPositionProgram.programID, "isView");
-//    glUniform1i(isViewLoc, isView);
+    normalPositionProgram.setUniform("edgeThreshold", edgeThreshold);
     
     glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, dataTexture[PHONG]);
-    GLuint ptLoc = glGetUniformLocation(normalPositionProgram.programID, "positionTex");
-    glUniform1i(ptLoc, 0);
+    glBindTexture(GL_TEXTURE_2D, datafbo[PHONG].textureIDs[0]);
+    normalPositionProgram.setUniform("positionTex", 0);
     
     GLuint npIndex = glGetSubroutineUniformLocation(normalPositionProgram.programID, GL_FRAGMENT_SHADER, "renderPass");
     if (npIndex == -1)
@@ -572,13 +551,6 @@ void pdRender(GLFWwindow *window)
     }
     
     for(int i = 0 ; i < 4; i++) {
-        glBindFramebuffer(GL_FRAMEBUFFER, dataFB[i]);
-        
-        glViewport(0, 0, w, h);
-        
-        glClearColor(0.0, 0.0, 0.0, 0.0);
-        glEnable(GL_DEPTH_TEST);
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         
         std::string pass = "pass1";
         pass[4] = '1' + i;
@@ -587,7 +559,8 @@ void pdRender(GLFWwindow *window)
                                              pass.c_str());
         glUniformSubroutinesuiv(GL_FRAGMENT_SHADER, 1, &npPass);
         
-        glDrawElements(GL_TRIANGLES, obj.nElements3 * 3, GL_UNSIGNED_SHORT, 0);
+        datafbo[i].render(window, normalVAO, vertexElement, obj.nElements3 * 3);
+//        glDrawElements(GL_TRIANGLES, obj.nElements3 * 3, GL_UNSIGNED_SHORT, 0);
         
     }
     
@@ -610,18 +583,20 @@ void pdRender(GLFWwindow *window)
     
     // value below (0 and 1) is same with GL_TEXTURE{value}
     glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, dataTexture[NORMAL]);
+//    glBindTexture(GL_TEXTURE_2D, dataTexture[NORMAL]);
+    glBindTexture(GL_TEXTURE_2D, datafbo[NORMAL].textureIDs[0]);
     GLuint normTexLoc = glGetUniformLocation(pdProgram.programID, "normalTexture");
     glUniform1i(normTexLoc, 0);
     glActiveTexture(GL_TEXTURE1);
-    glBindTexture(GL_TEXTURE_2D, dataTexture[POSITION]);
+//    glBindTexture(GL_TEXTURE_2D, dataTexture[POSITION]);
+    glBindTexture(GL_TEXTURE_2D, datafbo[POSITION].textureIDs[0]);
     GLuint posTexLoc = glGetUniformLocation(pdProgram.programID, "positionTexture");
     glUniform1i(posTexLoc, 1);
     
     // test values
 //    GLuint OFFSETLoc = glGetUniformLocation(pdProgram.programID, "OFFSET");
 //    glUniform1f(OFFSETLoc, testOffset);
-    inverseSizeLoc = glGetUniformLocation(pdProgram.programID, "inverseSize");
+    GLuint inverseSizeLoc = glGetUniformLocation(pdProgram.programID, "inverseSize");
     glUniform2fv(inverseSizeLoc, 1, glm::value_ptr(inverseSize));
     GLuint enableCaseTestLoc = glGetUniformLocation(pdProgram.programID, "enableCaseTest");
     glUniform1i(enableCaseTestLoc, enableCaseTest);
@@ -660,49 +635,50 @@ void pdRender(GLFWwindow *window)
     glErr("after render usTexture");
     
     //
-    // smoothing pd
+    // smoothing pd --> High GPU Usage!!!!!!!!!!!!!!!!!
     //
     
     glUseProgram(sdProgram.programID);
     
-    GLuint index = glGetSubroutineUniformLocation(sdProgram.programID, GL_FRAGMENT_SHADER, "renderPass");
-    if (index == -1)
-    {
-        std::cout << "Subroutine indexing error" << std::endl;
-        return;
-    }
-    
-    GLuint sdPass1 = glGetSubroutineIndex(sdProgram.programID, GL_FRAGMENT_SHADER, "pass1");
-    glUniformSubroutinesuiv(GL_FRAGMENT_SHADER, 1, &sdPass1);
-    
-    for (int i = 0; i < sdCount; i++)
-    {
-        glBindFramebuffer(GL_FRAMEBUFFER, sdFB[i]);
-        glBindVertexArray(quadVAO);
-        
-        glViewport(0, 0, w, h);
-        
-        glClearColor(0.0, 0.0, 0.0, 0.0);
-        glClear(GL_COLOR_BUFFER_BIT);
-        
-        glActiveTexture(GL_TEXTURE0 + i % 2);
-        GLuint tex = i == 0 ? usTexture : sdTexture[(i - 1) % 2];
-        glBindTexture(GL_TEXTURE_2D, tex);
-        GLuint testTexLoc = glGetUniformLocation(sdProgram.programID, "pdTex");
-        glUniform1i(testTexLoc, i % 2);
-        
-        glActiveTexture(GL_TEXTURE2);
-        glBindTexture(GL_TEXTURE_2D, dataTexture[EDGE]);
-        GLuint positionTexLoc = glGetUniformLocation(sdProgram.programID, "edgeTex");
-        glUniform1i(positionTexLoc, 2);
-        
-        GLuint inverseSizeLoc = glGetUniformLocation(sdProgram.programID, "inverseSize");
-        glUniform2fv(inverseSizeLoc, 1, glm::value_ptr(inverseSize));
-        
-        glDrawArrays(GL_TRIANGLES, 0, 6);
-    }
-    
-    glErr("after render sdTexture");
+//    GLuint index = glGetSubroutineUniformLocation(sdProgram.programID, GL_FRAGMENT_SHADER, "renderPass");
+//    if (index == -1)
+//    {
+//        std::cout << "Subroutine indexing error" << std::endl;
+//        return;
+//    }
+//    
+//    GLuint sdPass1 = glGetSubroutineIndex(sdProgram.programID, GL_FRAGMENT_SHADER, "pass1");
+//    glUniformSubroutinesuiv(GL_FRAGMENT_SHADER, 1, &sdPass1);
+//    
+//    for (int i = 0; i < sdCount; i++)
+//    {
+//        glBindFramebuffer(GL_FRAMEBUFFER, sdFB[i]);
+//        glBindVertexArray(quadVAO);
+//        
+//        glViewport(0, 0, w, h);
+//        
+//        glClearColor(0.0, 0.0, 0.0, 0.0);
+//        glClear(GL_COLOR_BUFFER_BIT);
+//        
+//        glActiveTexture(GL_TEXTURE0 + i % 2);
+//        GLuint tex = i == 0 ? usTexture : sdTexture[(i - 1) % 2];
+//        glBindTexture(GL_TEXTURE_2D, tex);
+//        GLuint testTexLoc = glGetUniformLocation(sdProgram.programID, "pdTex");
+//        glUniform1i(testTexLoc, i % 2);
+//        
+//        glActiveTexture(GL_TEXTURE2);
+////        glBindTexture(GL_TEXTURE_2D, dataTexture[EDGE]);
+//        glBindTexture(GL_TEXTURE_2D, datafbo[EDGE].textureIDs[0]);
+//        GLuint positionTexLoc = glGetUniformLocation(sdProgram.programID, "edgeTex");
+//        glUniform1i(positionTexLoc, 2);
+//        
+//        GLuint inverseSizeLoc = glGetUniformLocation(sdProgram.programID, "inverseSize");
+//        glUniform2fv(inverseSizeLoc, 1, glm::value_ptr(inverseSize));
+//        
+//        glDrawArrays(GL_TRIANGLES, 0, 6);
+//    }
+//    
+//    glErr("after render sdTexture");
     
     // angle quantization
     
@@ -718,7 +694,7 @@ void pdRender(GLFWwindow *window)
     
     std::string tamvar = "tam0";
     GLenum texId = GL_TEXTURE0;
-    for (int i = 0; i < TONE_COUNT; i++)
+    for (int i = 0; i < 2; i++)
     {
         // std::cout << "Texture Activate: tamvar = " << tamvar << std ::endl;
         glActiveTexture(texId + i);
@@ -734,7 +710,8 @@ void pdRender(GLFWwindow *window)
     GLuint testTexLoc = glGetUniformLocation(sdProgram.programID, "pdTex");
     glUniform1i(testTexLoc, 6);
     glActiveTexture(GL_TEXTURE7);
-    glBindTexture(GL_TEXTURE_2D, dataTexture[PHONG]);
+//    glBindTexture(GL_TEXTURE_2D, dataTexture[PHONG]);
+    glBindTexture(GL_TEXTURE_2D, datafbo[PHONG].textureIDs[0]);
     GLuint phongTexLoc = glGetUniformLocation(sdProgram.programID, "phong");
     glUniform1i(phongTexLoc, 7);
     
@@ -780,7 +757,7 @@ int main()
     // IDK the reason why it works but, you have to wait for 1 second. not even 500ms.
     // From: https://developer.apple.com/forums/thread/765445
     std::this_thread::sleep_for(1000ms);
-    
+
     // init
     
     if (!glfwInit())

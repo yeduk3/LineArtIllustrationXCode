@@ -15,19 +15,15 @@ in vec2 texCoords;
 out vec4 fragColor;
 
 // kernel size in pixels. recommandation is 5~10.
-const int KERNEL_SIZE = 10;
-const vec2 direction[4] = vec2[4](vec2(0, 1), vec2(1, 0), vec2(0, -1), vec2(-1, 0));
+uniform int KERNEL_SIZE = 5;
+uniform vec2 direction[4] = vec2[4](vec2(0, 1), vec2(1, 0), vec2(0, -1), vec2(-1, 0));
 
 // Quantization  level recommandation is 12~24.
-const int Q_LEVEL = 12;
+uniform int Q_LEVEL = 12;
 
 
 uniform sampler2D tam0;
 uniform sampler2D tam1;
-uniform sampler2D tam2;
-uniform sampler2D tam3;
-uniform sampler2D tam4;
-uniform sampler2D tam5;
 uniform sampler2D phong;
 
 subroutine(renderPassType)
@@ -38,32 +34,31 @@ vec4 pass1() {
     
     vec4 sum   = pd;
     
-    for (int j = 0; j < 4; j++) {
-        for (int i = 1; i <= KERNEL_SIZE; i++) {
-            vec3  pixelY   = vec3(gl_FragCoord.xy + (direction[j] * i), 0);
-            vec2  neiTexel = pixelY.xy * inverseSize.xy;
-            float depthY   = texture(edgeTex, neiTexel).r * KERNEL_SIZE;
-            pixelY.z       = depthY;
-            
-            float dist       = distance(pixelX, pixelY);
-            bool  continuity = dist < KERNEL_SIZE;
-            
-            if(!continuity)
-                break;
-            
-            vec4  npd        = texture(pdTex, neiTexel);
-            float sWeight    = 1.0 - dist / float(KERNEL_SIZE);
-            float dWeight    = dot(pd, npd);
-            
-            sum += (sWeight * dWeight * npd);
-        }
-    }
+//    for (int j = 0; j < 4; j++) {
+//        for (int i = 1; i <= KERNEL_SIZE; i++) {
+//            vec3  pixelY   = vec3(gl_FragCoord.xy + (direction[j] * i), 0);
+//            vec2  neiTexel = pixelY.xy * inverseSize.xy;
+//            pixelY.z       = texture(edgeTex, neiTexel).r * KERNEL_SIZE;
+//            
+//            float dist       = distance(pixelX, pixelY);
+//            bool  continuity = dist < KERNEL_SIZE;
+//            
+//            if(!continuity)
+//                break;
+//            
+//            vec4  npd        = texture(pdTex, neiTexel);
+////            float sWeight    = 1.0 - dist / float(KERNEL_SIZE);
+////            float dWeight    = dot(pd, npd);
+//            
+//            sum += (1.0 - dist / float(KERNEL_SIZE) * dot(pd, npd) * npd);
+//        }
+//    }
     
     return normalize(sum);
 }
 
 
-const float t[7] = float[7](0.0, float(1) / 6, float(2) / 6, float(3) / 6, float(4) / 6, float(5) / 6, 1.0);
+uniform float t[7] = float[7](0.0, float(1) / 6, float(2) / 6, float(3) / 6, float(4) / 6, float(5) / 6, 1.0);
 
 subroutine(renderPassType)
 vec4 pass2() {
@@ -106,12 +101,8 @@ vec4 pass2() {
     mat2 rot = mat2(vec2(co, si), vec2(-si, co));
     vec2 rotatedTexCoords = rot * texCoords * 5;
 
-    color1.r = texture(tam0, rotatedTexCoords).r;
-    color1.g = texture(tam1, rotatedTexCoords).g;
-    color1.b = texture(tam2, rotatedTexCoords).b;
-    color2.r = texture(tam3, rotatedTexCoords).r;
-    color2.g = texture(tam4, rotatedTexCoords).g;
-    color2.b = texture(tam5, rotatedTexCoords).b;
+    color1 = texture(tam0, rotatedTexCoords).rgb;
+    color2 = texture(tam1, rotatedTexCoords).rgb;
 
     float tone2 = 1 - tone;
 

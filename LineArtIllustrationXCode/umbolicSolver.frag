@@ -20,45 +20,45 @@ bool texInRange(vec2 texCoord)
         return true;
 }
 
+uniform int MAXDIST = 10;
+uniform ivec2 direction[4] = ivec2[4](ivec2(0, 1), ivec2(1, 0), ivec2(0, -1), ivec2(-1, 0));
 void main()
 {
     vec4 pd = texture(pdTexture, texCoords);
     
-    float dx = inverseSize.x * stepSize;
-    float dy = inverseSize.y * stepSize;
-    vec2 direction[4] = vec2[4](vec2(0, dy), vec2(dx, 0), vec2(0, -dy), vec2(-dx, 0));
+//    float dx = inverseSize.x * stepSize;
+//    float dy = inverseSize.y * stepSize;
+//    vec2 direction[4] = vec2[4](vec2(0, dy), vec2(dx, 0), vec2(0, -dy), vec2(-dx, 0));
     
     // if umbilic,
-    if (pd.w == 0)
+    if (pd.a == 0)
     {
         if (enableCaseTest)
             pd = vec4(1, 1, 1, 1);
         else
         {
             // find 4 neighboring, not umbilic, points
-            vec2 neighbor;
 
             vec4 sum = vec4(0);
             int count = 0;
+            ivec2 neighbor;
             for (int i = 0; i < 4; i++)
             {
-                neighbor = texCoords;
+                neighbor = ivec2(gl_FragCoord.xy);
                 vec4 nTex = vec4(0);
-                int distByOffset = 0;
+                int dist = 1;
                 
-                while (texInRange(neighbor + direction[i]) && nTex.a == 0)
+                while (nTex.a == 0 && dist < MAXDIST)
                 {
                     neighbor += direction[i];
-                    nTex = texture(pdTexture, neighbor);
-                    distByOffset++;
+                    nTex = texelFetch(pdTexture, neighbor, 0);
                 }
 
                 // if found,
                 if (nTex.a == 1)
                 {
-                    sum += nTex * distByOffset;
-                    count += distByOffset;
-//                    break;
+                    sum += nTex * (MAXDIST-dist);
+                    count += (MAXDIST-dist);
                 }
             }
 

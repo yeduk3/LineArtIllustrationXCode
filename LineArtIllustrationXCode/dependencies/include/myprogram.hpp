@@ -1,10 +1,8 @@
-// 아주대 신현준 교수님 toys.h 참고
-
-// 중복 include 방지.
 #pragma once
 
-// 프로그램 선언을 위한 OpenGL 인클루드
 #include <GL/glew.h>
+#include <glm/glm.hpp>
+#include <glm/gtc/type_ptr.hpp>
 
 #include <fstream>
 #include <iostream>
@@ -178,6 +176,47 @@ struct Program
         }
         glUseProgram(programID);
     }
+    
+    void setUniform(const char *uniformName, const glm::vec4 &value) {
+        glUniform4fv(glGetUniformLocation(programID, uniformName),
+                     1,
+                     glm::value_ptr(value));
+    }
+    
+    void setUniform(const char *uniformName, const glm::vec3 &value) {
+        glUniform3fv(glGetUniformLocation(programID, uniformName),
+                     1,
+                     glm::value_ptr(value));
+    }
+    void setUniform(const char *uniformName, const glm::vec2 &value) {
+        glUniform2fv(glGetUniformLocation(programID, uniformName),
+                     1,
+                     glm::value_ptr(value));
+    }
+    
+    void setUniform(const char *uniformName, const bool &value) {
+        glUniform1i(glGetUniformLocation(programID, uniformName),
+                    value);
+    }
+    void setUniform(const char *uniformName, const int &value) {
+        glUniform1i(glGetUniformLocation(programID, uniformName),
+                    value);
+    }
+    
+    void setUniform(const char *uniformName, const float &value) {
+        glUniform1f(glGetUniformLocation(programID, uniformName),
+                    value);
+    }
+    
+    void setUniform(const char *uniformName, const glm::mat4 &value, bool transpose = GL_FALSE) {
+        glUniformMatrix4fv(glGetUniformLocation(programID, uniformName),
+                           1,
+                           transpose,
+                           glm::value_ptr(value));
+    }
+    
+    
+    
     void cleanUp()
     {
         // Delete all programs
