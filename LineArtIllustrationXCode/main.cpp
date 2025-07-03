@@ -74,7 +74,7 @@ GLenum usTexDrawBuffers[1] = {GL_COLOR_ATTACHMENT0};
 // smooth directions
 
 const int SMOOTHING_COUNT = 6;
-int sdCount = 1;
+int sdCount = 5;
 Program sdProgram;
 GLuint sdFB[SMOOTHING_COUNT], angleFB;
 GLuint sdTexture[2], angleTexture;
@@ -543,7 +543,7 @@ void pdRender(GLFWwindow *window)
     glBindTexture(GL_TEXTURE_2D, datafbo[PHONG].textureIDs[0]);
     normalPositionProgram.setUniform("positionTex", 0);
     
-    GLuint npIndex = glGetSubroutineUniformLocation(normalPositionProgram.programID, GL_FRAGMENT_SHADER, "renderPass");
+    GLint npIndex = glGetSubroutineUniformLocation(normalPositionProgram.programID, GL_FRAGMENT_SHADER, "renderPass");
     if (npIndex == -1)
     {
         std::cout << "Subroutine indexing error" << std::endl;
@@ -607,32 +607,55 @@ void pdRender(GLFWwindow *window)
     glErr("after render pdTexture");
     
     //
-    // umbolic solver render
+    // umbolic solver render --> Non generic in his GPU-based PD estimation
     //
     
-    glUseProgram(usProgram.programID);
+//    glUseProgram(usProgram.programID);
+//    
+//    glBindFramebuffer(GL_FRAMEBUFFER, usFB);
+//    glBindVertexArray(quadVAO);
+//    
+//    glViewport(0, 0, w, h);
+//    
+//    glClearColor(0.0, 0.0, 0.0, 0.0);
+//    glClear(GL_COLOR_BUFFER_BIT);
+//    
+//    inverseSizeLoc = glGetUniformLocation(usProgram.programID, "inverseSize");
+//    glUniform2fv(inverseSizeLoc, 1, glm::value_ptr(inverseSize));
+//    
+//    glActiveTexture(GL_TEXTURE0);
+//    glBindTexture(GL_TEXTURE_2D, pdTexture);
+//    GLuint pdTextureLoc = glGetUniformLocation(usProgram.programID, "pdTexture");
+//    glUniform1i(pdTextureLoc, 0);
+//    
+//    enableCaseTestLoc = glGetUniformLocation(usProgram.programID, "enableCaseTest");
+//    glUniform1i(enableCaseTestLoc, enableCaseTest);
+//    
+//    glDrawArrays(GL_TRIANGLES, 0, 6);
+//    glErr("after render usTexture");
     
-    glBindFramebuffer(GL_FRAMEBUFFER, usFB);
-    glBindVertexArray(quadVAO);
-    
-    glViewport(0, 0, w, h);
-    
-    glClearColor(0.0, 0.0, 0.0, 0.0);
-    glClear(GL_COLOR_BUFFER_BIT);
-    
-    inverseSizeLoc = glGetUniformLocation(usProgram.programID, "inverseSize");
-    glUniform2fv(inverseSizeLoc, 1, glm::value_ptr(inverseSize));
-    
-    glActiveTexture(GL_TEXTURE0);
+    int size = w*h;
+    std::vector<GLfloat> pdData(size*4);
     glBindTexture(GL_TEXTURE_2D, pdTexture);
-    GLuint pdTextureLoc = glGetUniformLocation(usProgram.programID, "pdTexture");
-    glUniform1i(pdTextureLoc, 0);
+    glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_FLOAT, pdData.data());
     
-    enableCaseTestLoc = glGetUniformLocation(usProgram.programID, "enableCaseTest");
-    glUniform1i(enableCaseTestLoc, enableCaseTest);
+    if(pdData[3] == 0) {
+        pdData[0] = 1;
+        pdData[1] = 0;
+        pdData[2] = 0;
+        pdData[3] = 1;
+    }
+    for(int i = 1; i < size; i++) {
+        if(pdData[i*4+3] == 0) { // umbilic point
+            pdData[i*4] = pdData[(i-1)*4];
+            pdData[i*4+1] = pdData[(i-1)*4+1];
+            pdData[i*4+2] = pdData[(i-1)*4+2];
+            pdData[i*4+3] = pdData[(i-1)*4+3];
+        }
+    }
     
-    glDrawArrays(GL_TRIANGLES, 0, 6);
-    glErr("after render usTexture");
+    glBindTexture(GL_TEXTURE_2D, usTexture);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, w, h, 0, GL_RGBA, GL_FLOAT, pdData.data());
     
     //
     // smoothing pd --> High GPU Usage!!!!!!!!!!!!!!!!!
@@ -640,45 +663,45 @@ void pdRender(GLFWwindow *window)
     
     glUseProgram(sdProgram.programID);
     
-//    GLuint index = glGetSubroutineUniformLocation(sdProgram.programID, GL_FRAGMENT_SHADER, "renderPass");
-//    if (index == -1)
-//    {
-//        std::cout << "Subroutine indexing error" << std::endl;
-//        return;
-//    }
-//    
-//    GLuint sdPass1 = glGetSubroutineIndex(sdProgram.programID, GL_FRAGMENT_SHADER, "pass1");
-//    glUniformSubroutinesuiv(GL_FRAGMENT_SHADER, 1, &sdPass1);
-//    
-//    for (int i = 0; i < sdCount; i++)
-//    {
-//        glBindFramebuffer(GL_FRAMEBUFFER, sdFB[i]);
-//        glBindVertexArray(quadVAO);
-//        
-//        glViewport(0, 0, w, h);
-//        
-//        glClearColor(0.0, 0.0, 0.0, 0.0);
-//        glClear(GL_COLOR_BUFFER_BIT);
-//        
-//        glActiveTexture(GL_TEXTURE0 + i % 2);
-//        GLuint tex = i == 0 ? usTexture : sdTexture[(i - 1) % 2];
-//        glBindTexture(GL_TEXTURE_2D, tex);
-//        GLuint testTexLoc = glGetUniformLocation(sdProgram.programID, "pdTex");
-//        glUniform1i(testTexLoc, i % 2);
-//        
-//        glActiveTexture(GL_TEXTURE2);
-////        glBindTexture(GL_TEXTURE_2D, dataTexture[EDGE]);
-//        glBindTexture(GL_TEXTURE_2D, datafbo[EDGE].textureIDs[0]);
-//        GLuint positionTexLoc = glGetUniformLocation(sdProgram.programID, "edgeTex");
-//        glUniform1i(positionTexLoc, 2);
-//        
-//        GLuint inverseSizeLoc = glGetUniformLocation(sdProgram.programID, "inverseSize");
-//        glUniform2fv(inverseSizeLoc, 1, glm::value_ptr(inverseSize));
-//        
-//        glDrawArrays(GL_TRIANGLES, 0, 6);
-//    }
-//    
-//    glErr("after render sdTexture");
+    GLuint index = glGetSubroutineUniformLocation(sdProgram.programID, GL_FRAGMENT_SHADER, "renderPass");
+    if (index == -1)
+    {
+        std::cout << "Subroutine indexing error" << std::endl;
+        return;
+    }
+    
+    GLuint sdPass1 = glGetSubroutineIndex(sdProgram.programID, GL_FRAGMENT_SHADER, "pass1");
+    glUniformSubroutinesuiv(GL_FRAGMENT_SHADER, 1, &sdPass1);
+    
+    for (int i = 0; i < sdCount; i++)
+    {
+        glBindFramebuffer(GL_FRAMEBUFFER, sdFB[i]);
+        glBindVertexArray(quadVAO);
+        
+        glViewport(0, 0, w, h);
+        
+        glClearColor(0.0, 0.0, 0.0, 0.0);
+        glClear(GL_COLOR_BUFFER_BIT);
+        
+        glActiveTexture(GL_TEXTURE0 + i % 2);
+        GLuint tex = i == 0 ? usTexture : sdTexture[(i - 1) % 2];
+        glBindTexture(GL_TEXTURE_2D, tex);
+        GLuint testTexLoc = glGetUniformLocation(sdProgram.programID, "pdTex");
+        glUniform1i(testTexLoc, i % 2);
+        
+        glActiveTexture(GL_TEXTURE2);
+//        glBindTexture(GL_TEXTURE_2D, dataTexture[EDGE]);
+        glBindTexture(GL_TEXTURE_2D, datafbo[EDGE].textureIDs[0]);
+        GLuint positionTexLoc = glGetUniformLocation(sdProgram.programID, "edgeTex");
+        glUniform1i(positionTexLoc, 2);
+        
+        GLuint inverseSizeLoc = glGetUniformLocation(sdProgram.programID, "inverseSize");
+        glUniform2fv(inverseSizeLoc, 1, glm::value_ptr(inverseSize));
+        
+        glDrawArrays(GL_TRIANGLES, 0, 6);
+    }
+    
+    glErr("after render sdTexture");
     
     // angle quantization
     
