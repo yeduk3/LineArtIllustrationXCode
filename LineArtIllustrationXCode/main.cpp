@@ -295,6 +295,7 @@ void render() {
     
     // =================================== Angle Quatization
     
+    fquadShader.setUniform("viewMat", viewMat);
     fquadShader.setTexture("pdTexture", 0, prev);
     fquadShader.setTexture("tam0", 1, TAMTexture[0]);
     fquadShader.setTexture("tam1", 2, TAMTexture[1]);

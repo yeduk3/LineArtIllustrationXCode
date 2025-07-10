@@ -190,9 +190,9 @@ void smoothingPD() {
     }
     
     if(smoothTarget == 0)
-        smoothedPDColor1 = weightSum > 0 ? vec4(normalize(sum/weightSum),1) : vec4(pd,1);
+        smoothedPDColor1 = weightSum > 0 ? vec4(normalize(sum),1) : vec4(pd,1);
     else
-        smoothedPDColor2 = weightSum > 0 ? vec4(normalize(sum/weightSum),1) : vec4(pd,1);
+        smoothedPDColor2 = weightSum > 0 ? vec4(normalize(sum),1) : vec4(pd,1);
 }
 
 // Quantization  level recommandation is 12~24.
@@ -201,18 +201,39 @@ uniform float t[7] = float[7](0.0, float(1) / 6, float(2) / 6, float(3) / 6, flo
 
 uniform sampler2D tam0;
 uniform sampler2D tam1;
+#define PI 3.1415926535897932384626433832795
+
+// https://github.com/hughsk/glsl-hsv2rgb/blob/master/index.glsl
+vec3 hsv2rgb(vec3 c) {
+    vec4 K = vec4(1.0, 2.0 / 3.0, 1.0 / 3.0, 3.0);
+    vec3 p = abs(fract(c.xxx + K.xyz) * 6.0 - K.www);
+    return c.z * mix(K.xxx, clamp(p - K.xxx, 0.0, 1.0), c.y);
+}
+
+uniform mat4 viewMat;
+
+//#define ANGLE_VISUALIZE
 
 subroutine(renderPassType)
 void strokeMapping() {
     // Discretize Angle & Blending
     
-    // 0 < angel < pi
+    // 0 < angle < pi
 //    float angle = acos(texture(pdTex, texCoords).x);
     vec3 pd = texture(pdTexture,texCoord).xyz;
-    float angle = atan(pd.y, pd.x);
-//    return 
+    pd = (viewMat * vec4(pd, 0)).xyz;
+    
+    float angle = pd.x == 0 ? PI/2 : atan(pd.y, pd.x); // [-pi, pi]
+    angle = angle * sign(angle); // [0, pi]
+    
+#ifdef ANGLE_VISUALIZE
+    float normAngle = (angle) / (PI);
+    strokeMappedColor = vec4(hsv2rgb(vec3(normAngle, 1, 1)), 1);
+    return;
+#endif
+    
     // split pi into same-width Q_LEVEL bins.
-    float qd = 3.141592 / float(Q_LEVEL);
+    float qd = PI / float(Q_LEVEL);
     
     // -1 <= qlLevel < qxLevel < qrLevel <= Q_LEVEL
     //            0 <= qxLevel < Q_LEVEL

@@ -975,7 +975,7 @@
 		5568C45C2D7AE60900244D41 /* OpenGL.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = OpenGL.framework; path = System/Library/Frameworks/OpenGL.framework; sourceTree = SDKROOT; };
 		5568C45F2D7AEBD000244D41 /* libGLEW.2.2.0.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libGLEW.2.2.0.dylib; path = ../../../../../../opt/homebrew/Cellar/glew/2.2.0_1/lib/libGLEW.2.2.0.dylib; sourceTree = "<group>"; };
 		5568C4632D7AEBE300244D41 /* libglfw.3.4.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libglfw.3.4.dylib; path = ../../../../../../opt/homebrew/Cellar/glfw/3.4/lib/libglfw.3.4.dylib; sourceTree = "<group>"; };
-		557EA23D2E1F865B00D93904 /* UtahTeapot.obj */ = {isa = PBXFileReference; explicitFileType = sourcecode.c.objc.preprocessed; path = UtahTeapot.obj; sourceTree = "<group>"; };
+		557EA23D2E1F865B00D93904 /* UtahTeapot.obj */ = {isa = PBXFileReference; lastKnownFileType = text; path = UtahTeapot.obj; sourceTree = "<group>"; };
 		557EA23E2E1F86C500D93904 /* UtahTeapot.mtl */ = {isa = PBXFileReference; lastKnownFileType = text; path = UtahTeapot.mtl; sourceTree = "<group>"; };
 		55A8F5CF2E1CD39300724F9A /* model.frag */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.glsl; path = model.frag; sourceTree = "<group>"; };
 		55A8F5D02E1CD39300724F9A /* model.vert */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.glsl; path = model.vert; sourceTree = "<group>"; };
