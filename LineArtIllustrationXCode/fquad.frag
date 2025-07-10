@@ -144,9 +144,9 @@ void estimatePD() {
 
     minPD = normalize(minPD);
     
-    if(minPD.x < 0) minPD = -minPD;
-    if(minPD.y < 0) minPD = -minPD;
-    if(minPD.z < 0) minPD = -minPD;
+    float ma = max(minPD.x, max(minPD.y, minPD.z));
+    float mi = min(minPD.x, min(minPD.y, minPD.z));
+    if(ma < abs(mi)) minPD = -minPD;
 
     // if umbilic, 4-th color is 0, otherwise 1.
     caseTestColor = vec4(caseTest, umbilic);
