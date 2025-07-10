@@ -263,12 +263,16 @@ void render() {
         pdData[2] = 0;
         pdData[3] = 1;
     }
+    glm::vec3 prevGood = {1, 0, 0};
     for(int i = 1; i < size; i++) {
         if(pdData[i*4+3] == 0) { // umbilic point
-            pdData[i*4] = pdData[(i-1)*4];
-            pdData[i*4+1] = pdData[(i-1)*4+1];
-            pdData[i*4+2] = pdData[(i-1)*4+2];
-            pdData[i*4+3] = pdData[(i-1)*4+3];
+            pdData[i*4] = prevGood.x;
+            pdData[i*4+1] = prevGood.y;
+            pdData[i*4+2] = prevGood.z;
+            pdData[i*4+3] = 1;
+        } else {
+            glm::vec3 p = {pdData[i*4], pdData[i*4+1], pdData[i*4+2]};
+            if(glm::dot(p, p) > 0.8) prevGood = p;
         }
     }
     

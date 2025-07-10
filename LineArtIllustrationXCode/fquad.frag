@@ -162,37 +162,37 @@ uniform int smoothTarget;
 
 subroutine(renderPassType)
 void smoothingPD() {
-    vec4  pd     = texture(pdTexture, texCoord);
-    float depthX  = texture(edgeTexture, texCoord).r;
+    vec3  pd     = texture(pdTexture, texCoord).xyz;
+    float depthX  = texture(edgeTexture, texCoord).r * KERNEL_SIZE;
     vec3  fragX = vec3(gl_FragCoord.xy, depthX);
     
-    vec4 sum   = pd;
+    vec3 sum   = pd;
+    float weightSum = 0;
     
     for (int j = 0; j < 4; j++) {
         for (int i = 1; i <= KERNEL_SIZE; i++) {
-//            vec3  pixelY   = vec3(gl_FragCoord.xy + (direction[j] * i), 0);
             vec3  fragY    = fragX + vec3(direction[j] * i, 0);
             vec2  neiTexel = fragY.xy * inverseSize.xy;
             float depthY   = texture(edgeTexture, neiTexel).r * KERNEL_SIZE;
             fragY.z       = depthY;
             
             float dist       = distance(fragX, fragY);
-            bool  continuity = dist < KERNEL_SIZE;
+            if(dist >= KERNEL_SIZE) break;
             
-            if(!continuity) break;
-            
-            vec4  npd        = texture(pdTexture, neiTexel);
+            vec3  npd        = texture(pdTexture, neiTexel).xyz;
             float sWeight    = 1.0 - dist / float(KERNEL_SIZE);
             float dWeight    = dot(pd, npd);
+            float totalWeight = sWeight * dWeight;
             
-            sum += (sWeight * dWeight * npd);
+            sum += (totalWeight * npd);
+            weightSum += totalWeight;
         }
     }
     
     if(smoothTarget == 0)
-        smoothedPDColor1 = vec4(normalize(sum.xyz),1);
+        smoothedPDColor1 = weightSum > 0 ? vec4(normalize(sum/weightSum),1) : vec4(pd,1);
     else
-        smoothedPDColor2 = vec4(normalize(sum.xyz),1);
+        smoothedPDColor2 = weightSum > 0 ? vec4(normalize(sum/weightSum),1) : vec4(pd,1);
 }
 
 // Quantization  level recommandation is 12~24.
@@ -210,6 +210,7 @@ void strokeMapping() {
 //    float angle = acos(texture(pdTex, texCoords).x);
     vec3 pd = texture(pdTexture,texCoord).xyz;
     float angle = atan(pd.y, pd.x);
+//    return 
     // split pi into same-width Q_LEVEL bins.
     float qd = 3.141592 / float(Q_LEVEL);
     
