@@ -6,7 +6,7 @@
 //
 
 #include <objreader.hpp>
-ObjData obj;
+ObjData obj, human;
 
 #include <YGLWindow.hpp>
 YGLWindow* yglWindow;
@@ -112,6 +112,25 @@ void tamTexLoad(bool verbose = false)
     std::cout << "--- TAM Texture Loaded ---" << std::endl;
 }
 
+
+struct Plane : ObjData {
+    Plane() {
+        vertices = {
+            {-0.5, 0, -0.5}, {-0.5, 0, 0.5}, {0.5, 0, 0.5}, {0.5, 0, -0.5}
+        };
+        nVertices = 6;
+        
+        syncedNormals = std::vector<glm::vec3>(6, {0,1,0});
+        nSyncedNormals = 6;
+        
+        elements3 = {
+            {0, 1, 2}, {0, 2, 3}
+        };
+        nElements3 = 2;
+    }
+};
+Plane plane;
+
 void init() {
 //    pdInit(yglWindow->getGLFWWindow());
     camera.setPosition({0, 0, 5});
@@ -120,10 +139,17 @@ void init() {
     tamTexLoad();
     glErr("after tamTexLoad(): TAM Texture Loading");
     
-    obj.loadObject("obj", "teapot.obj");
-    obj.adjustCenter();
+    obj.loadObject("obj", "UtahTeapot.obj");
+    obj.adjustCenter(true);
     obj.generateBuffers();
     glErr("after generateBuffer(): teapot object");
+    
+    human.loadObject("obj", "human.obj");
+    human.adjustCenter(true);
+    human.generateBuffers();
+    
+    plane.generateBuffers();
+    glErr("after generateBuffer(): plane object");
     
     modelShader.loadShader("model.vert", "model.frag");
     fquadShader.loadShader("fquad.vert", "fquad.frag");
@@ -157,11 +183,6 @@ void render() {
     
     // ============================== Position & Normal & Phong
     
-    glm::mat4 modelMat = glm::scale(glm::vec3(0.8));
-    glm::vec3 eyePosition = camera.getCurPosition();
-    glm::mat4 viewMat = camera.lookAt();
-    glm::mat4 projMat = camera.perspective(yglWindow->aspect(), 0.1f, 1000.f);
-    
     modelFbo.bind();
     glEnable(GL_DEPTH_TEST);
     glClearColor(0, 0, 0, 0);
@@ -170,13 +191,18 @@ void render() {
     glViewport(0, 0, w, h);
     
     modelShader.use();
-    modelShader.setUniform("modelMat", modelMat);
+    
+    glm::vec3 eyePosition = camera.getCurPosition();
+    glm::mat4 viewMat = camera.lookAt();
+    glm::mat4 projMat = camera.perspective(yglWindow->aspect(), 0.1f, 1000.f);
+    
     modelShader.setUniform("viewMat", viewMat);
     modelShader.setUniform("projMat", projMat);
     
     glm::vec3 lightPosition(10, 10, 5);
     glm::vec3 lightColor(160);
     float shininess = 12;
+    
     modelShader.setUniform("lightPosition", lightPosition);
     modelShader.setUniform("eyePosition", eyePosition);
     modelShader.setUniform("lightColor", lightColor);
@@ -184,7 +210,17 @@ void render() {
     modelShader.setUniform("specularColor", obj.materialData[0].specularColor);
     modelShader.setUniform("shininess", shininess);
     
+    glm::mat4 modelMat = glm::scale(glm::translate(glm::mat4(1), glm::vec3(-1.5, 0, 0)), glm::vec3(5, 5, 5));
+    modelShader.setUniform("modelMat", modelMat);
     obj.render();
+    
+    modelMat = glm::scale(glm::translate(glm::mat4(1), glm::vec3(1.5, 0, 0)), glm::vec3(2.5, 2.5, 2.5));
+    modelShader.setUniform("modelMat", modelMat);
+    human.render();
+    
+    modelMat = glm::scale(glm::translate(glm::mat4(1), glm::vec3(0, -1.3, 0)), glm::vec3(10, 0, 10));
+    modelShader.setUniform("modelMat", modelMat);
+    plane.render();
     
     // ============================= Sobel
     

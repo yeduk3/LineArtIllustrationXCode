@@ -48,7 +48,7 @@ void sobelFilter() {
 }
 
 // Estimating Principal Direction
-const float CLOSETOZERO = 0.000001;
+const float CLOSETOZERO = 0.0000001;
 
 subroutine(renderPassType)
 void estimatePD() {
@@ -71,9 +71,9 @@ void estimatePD() {
     vec3 localAxis1 = cross(np, localAxis2);
 
     // Local Frame
-    mat4 localbasis = mat4(vec4(localAxis1, 0), vec4(localAxis2, 0), vec4(np, 0), vec4(0, 0, 0, 1));
+    mat4 localbasis  = mat4(vec4(localAxis1, 0), vec4(localAxis2, 0), vec4(np, 0), vec4(0, 0, 0, 1));
     mat4 localorigin = mat4(vec4(1, 0, 0, 0), vec4(0, 1, 0, 0), vec4(0, 0, 1, 0), vec4(-pp.x, -pp.y, -pp.z, 1));
-    mat4 localframe = localbasis * localorigin;
+    mat4 localframe  = transpose(localbasis) * localorigin;
 
     p1 = (localframe * vec4(p1, 1)).xyz;
     p2 = (localframe * vec4(p2, 1)).xyz;
@@ -87,43 +87,37 @@ void estimatePD() {
     vec4 ray2  = vec4(ratio.x, ratio.y, p2.x - (p2.z * ratio.x), p2.y - (p2.z * ratio.y));
 
     // Handling Degeneracies
-    float A = ray1.z * ray2.w - ray2.z * ray1.w;
+    // A*la^2 + B*la + C = 0
+    float A = ray1.x * ray2.y - ray2.x * ray1.y;
     float B = ray1.x * ray2.w + ray2.y * ray1.z - ray2.x * ray1.w - ray1.y * ray2.z;
-    float C = ray1.x * ray2.y - ray2.x * ray1.y;
+    float C = ray1.z * ray2.w - ray2.z * ray1.w;
     float D = B * B - 4 * A * C;
 
-    vec3 maxPD, minPD;
+    vec3 minPD = vec3(0);
     int umbilic = 1;
 
     vec3 caseTest = vec3(0);
     
-    if (abs(A) < CLOSETOZERO && abs(B) < 2*CLOSETOZERO) {
+    if (abs(A) < CLOSETOZERO && abs(B) < CLOSETOZERO) {
         // Locally planar cases
         caseTest.r = 1.0;
 
-        vec3 xAxis = vec3(1, 0, 0);
-        vec3 yAxis = vec3(0, 1, 0);
-        vec3 zAxis = vec3(0, 0, 1);
+        vec3 maxPD = vec3(0);
         // not parallel test
-        if (abs(dot(np, xAxis)) != 1-CLOSETOZERO)
-            maxPD = cross(xAxis, np);
-        else if (abs(dot(np, yAxis)) != 1-CLOSETOZERO)
-            maxPD = cross(yAxis, np);
+        if (abs(np.x) < 1-CLOSETOZERO)
+            maxPD = normalize(cross(vec3(1, 0, 0), np));
+        else if (abs(np.y) < 1-CLOSETOZERO)
+            maxPD = normalize(cross(vec3(0, 1, 0), np));
         else
-            maxPD = cross(zAxis, np);
+            maxPD = normalize(cross(vec3(0, 0, 1), np));
         minPD = cross(maxPD, np);
     }
     else if (abs(A) < CLOSETOZERO) {
         // Locally near parabolic
         caseTest.g = 1.0;
 
-        float k1 = (-B + sqrt(D)) / (2 * A);
-        float k2 = (-B - sqrt(D)) / (2 * A);
-        // choose greater curvature. since parabolic curvatures have only one 0 curvature and other not.
-        float kk = abs(k1) < abs(k2) ? k1 : k2;
-
+        float kk = (2 * A) / (-B + sqrt(D));
         minPD = normalize(vec3(ray1.z * kk + ray1.x, ray1.w * kk + ray1.y, 0));
-        maxPD = cross(np, maxPD);
     }
     else if (D < CLOSETOZERO * CLOSETOZERO)
     {
@@ -140,29 +134,20 @@ void estimatePD() {
         // General cases
         caseTest.b = 1.0;
 
-        float k1 = 2 * A / (-B + sqrt(D));
-        float k2 = 2 * A / (-B - sqrt(D));
-        // make k1's curvature greater than k2's curvature
-        if (abs(k1) > abs(k2))
-        {
-            caseTest.r = 1.0;
-
-            float tmp = k1;
-            k1 = k2;
-            k2 = tmp;
-        }
-
-//        maxPD = normalize(vec3(ray1.z * k1 + ray1.x, ray1.w * k1 + ray1.y, 0));
-//        minPD = normalize(vec3(ray1.z * k2 + ray1.x, ray1.w * k2 + ray1.y, 0));
+        float k1 = (2 * A) / (-B + sqrt(D));
+        float k2 = (2 * A) / (-B - sqrt(D));
         
-        maxPD = vec3(ray1.z * k1 + ray1.x, ray1.w * k1 + ray1.y, 0);
-        minPD = vec3(ray1.z * k2 + ray1.x, ray1.w * k2 + ray1.y, 0);
+        // make k1's curvature greater than k2's curvature
+        float kk = abs(k1) < abs(k2) ? k2 : k1;
+        minPD = vec3(ray1.z * kk + ray1.x, ray1.w * kk + ray1.y, 0);
     }
 
-    maxPD = normalize((transpose(localbasis) * vec4(maxPD, 0)).xyz);
-    minPD = normalize((transpose(localbasis) * vec4(minPD, 0)).xyz);
+    minPD = normalize(minPD);
+    
+    if(minPD.x < 0) minPD = -minPD;
+    if(minPD.y < 0) minPD = -minPD;
+    if(minPD.z < 0) minPD = -minPD;
 
-//    minPD = minPD * (minPD.x < 0 ? -1 : 1);
     // if umbilic, 4-th color is 0, otherwise 1.
     caseTestColor = vec4(caseTest, umbilic);
     pdColor = vec4(minPD, umbilic);
@@ -171,7 +156,7 @@ void estimatePD() {
 
 uniform sampler2D pdTexture;
 uniform sampler2D edgeTexture;
-uniform int KERNEL_SIZE = 5;
+uniform int KERNEL_SIZE = 10;
 uniform vec2 direction[4] = vec2[4](vec2(0, 1), vec2(1, 0), vec2(0, -1), vec2(-1, 0));
 uniform int smoothTarget;
 

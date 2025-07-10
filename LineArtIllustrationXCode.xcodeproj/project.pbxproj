@@ -47,13 +47,14 @@
 			name = "Embed Libraries";
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		55DFAFA42E164D790043C0EB /* CopyFiles */ = {
+		55DFAFA42E164D790043C0EB /* Copy Files */ = {
 			isa = PBXCopyFilesBuildPhase;
 			buildActionMask = 2147483647;
 			dstPath = /usr/share/man/man1/;
 			dstSubfolderSpec = 0;
 			files = (
 			);
+			name = "Copy Files";
 			runOnlyForDeploymentPostprocessing = 1;
 		};
 		55DFAFA52E164D790043C0EB /* Embed Libraries */ = {
@@ -71,14 +72,8 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
-		550C75EB2E0A44C300C8D73C /* framebuffer.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = framebuffer.hpp; sourceTree = "<group>"; };
-		550C75EC2E0A44C300C8D73C /* myprogram.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = myprogram.hpp; sourceTree = "<group>"; };
-		550C75ED2E0A44C300C8D73C /* objreader.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = objreader.hpp; sourceTree = "<group>"; };
-		550C75EE2E0A44C300C8D73C /* stb_image.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = stb_image.h; sourceTree = "<group>"; };
-		550C75F02E0A44C300C8D73C /* framebuffer.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = framebuffer.cpp; sourceTree = "<group>"; };
-		550C75F12E0A44C300C8D73C /* objreader.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = objreader.cpp; sourceTree = "<group>"; };
 		550C75F42E0A44C300C8D73C /* Ball1 Sphere.obj */ = {isa = PBXFileReference; lastKnownFileType = text; path = "Ball1 Sphere.obj"; sourceTree = "<group>"; };
-		550C75F52E0A44C300C8D73C /* FinalBaseMesh.obj */ = {isa = PBXFileReference; lastKnownFileType = text; path = FinalBaseMesh.obj; sourceTree = "<group>"; };
+		550C75F52E0A44C300C8D73C /* human.obj */ = {isa = PBXFileReference; lastKnownFileType = text; path = human.obj; sourceTree = "<group>"; };
 		550C75F62E0A44C300C8D73C /* teapot.mtl */ = {isa = PBXFileReference; lastKnownFileType = text; path = teapot.mtl; sourceTree = "<group>"; };
 		550C75F72E0A44C300C8D73C /* teapot.obj */ = {isa = PBXFileReference; lastKnownFileType = text; path = teapot.obj; sourceTree = "<group>"; };
 		550C75F92E0A44C300C8D73C /* tone0mip0.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = tone0mip0.png; sourceTree = "<group>"; };
@@ -980,6 +975,8 @@
 		5568C45C2D7AE60900244D41 /* OpenGL.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = OpenGL.framework; path = System/Library/Frameworks/OpenGL.framework; sourceTree = SDKROOT; };
 		5568C45F2D7AEBD000244D41 /* libGLEW.2.2.0.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libGLEW.2.2.0.dylib; path = ../../../../../../opt/homebrew/Cellar/glew/2.2.0_1/lib/libGLEW.2.2.0.dylib; sourceTree = "<group>"; };
 		5568C4632D7AEBE300244D41 /* libglfw.3.4.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libglfw.3.4.dylib; path = ../../../../../../opt/homebrew/Cellar/glfw/3.4/lib/libglfw.3.4.dylib; sourceTree = "<group>"; };
+		557EA23D2E1F865B00D93904 /* UtahTeapot.obj */ = {isa = PBXFileReference; explicitFileType = sourcecode.c.objc.preprocessed; path = UtahTeapot.obj; sourceTree = "<group>"; };
+		557EA23E2E1F86C500D93904 /* UtahTeapot.mtl */ = {isa = PBXFileReference; lastKnownFileType = text; path = UtahTeapot.mtl; sourceTree = "<group>"; };
 		55A8F5CF2E1CD39300724F9A /* model.frag */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.glsl; path = model.frag; sourceTree = "<group>"; };
 		55A8F5D02E1CD39300724F9A /* model.vert */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.glsl; path = model.vert; sourceTree = "<group>"; };
 		55A8F5D12E1CD3EB00724F9A /* fquad.frag */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.glsl; path = fquad.frag; sourceTree = "<group>"; };
@@ -1016,42 +1013,15 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
-		550C75EF2E0A44C300C8D73C /* include */ = {
-			isa = PBXGroup;
-			children = (
-				550C75EB2E0A44C300C8D73C /* framebuffer.hpp */,
-				550C75EC2E0A44C300C8D73C /* myprogram.hpp */,
-				550C75ED2E0A44C300C8D73C /* objreader.hpp */,
-				550C75EE2E0A44C300C8D73C /* stb_image.h */,
-			);
-			path = include;
-			sourceTree = "<group>";
-		};
-		550C75F22E0A44C300C8D73C /* library */ = {
-			isa = PBXGroup;
-			children = (
-				550C75F02E0A44C300C8D73C /* framebuffer.cpp */,
-				550C75F12E0A44C300C8D73C /* objreader.cpp */,
-			);
-			path = library;
-			sourceTree = "<group>";
-		};
-		550C75F32E0A44C300C8D73C /* dependencies */ = {
-			isa = PBXGroup;
-			children = (
-				550C75EF2E0A44C300C8D73C /* include */,
-				550C75F22E0A44C300C8D73C /* library */,
-			);
-			path = dependencies;
-			sourceTree = "<group>";
-		};
 		550C75F82E0A44C300C8D73C /* obj */ = {
 			isa = PBXGroup;
 			children = (
 				550C75F42E0A44C300C8D73C /* Ball1 Sphere.obj */,
-				550C75F52E0A44C300C8D73C /* FinalBaseMesh.obj */,
+				550C75F52E0A44C300C8D73C /* human.obj */,
 				550C75F62E0A44C300C8D73C /* teapot.mtl */,
 				550C75F72E0A44C300C8D73C /* teapot.obj */,
+				557EA23E2E1F86C500D93904 /* UtahTeapot.mtl */,
+				557EA23D2E1F865B00D93904 /* UtahTeapot.obj */,
 			);
 			path = obj;
 			sourceTree = "<group>";
@@ -1091,7 +1061,6 @@
 			isa = PBXGroup;
 			children = (
 				550C79992E0A44E400C8D73C /* YGL */,
-				550C75F32E0A44C300C8D73C /* dependencies */,
 				550C75F82E0A44C300C8D73C /* obj */,
 				550C76112E0A44C300C8D73C /* TAM */,
 				550C76122E0A44C300C8D73C /* main.cpp */,
@@ -2179,7 +2148,7 @@
 			buildPhases = (
 				55DFAF9C2E164D790043C0EB /* Sources */,
 				55DFAFA02E164D790043C0EB /* Frameworks */,
-				55DFAFA42E164D790043C0EB /* CopyFiles */,
+				55DFAFA42E164D790043C0EB /* Copy Files */,
 				55DFAFA52E164D790043C0EB /* Embed Libraries */,
 			);
 			buildRules = (
