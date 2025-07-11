@@ -196,11 +196,11 @@ void smoothingPD() {
 }
 
 // Quantization  level recommandation is 12~24.
-uniform int Q_LEVEL = 12;
-uniform float t[7] = float[7](0.0, float(1) / 6, float(2) / 6, float(3) / 6, float(4) / 6, float(5) / 6, 1.0);
+uniform int QUANTIZATION_LEVEL = 24;
 
 uniform sampler2D tam0;
 uniform sampler2D tam1;
+uniform sampler2D texCoordTexture;
 #define PI 3.1415926535897932384626433832795
 
 // https://github.com/hughsk/glsl-hsv2rgb/blob/master/index.glsl
@@ -210,28 +210,13 @@ vec3 hsv2rgb(vec3 c) {
     return c.z * mix(K.xxx, clamp(p - K.xxx, 0.0, 1.0), c.y);
 }
 
-uniform mat4 viewMat;
+mat2 texRotateMat(float angle) {
+    float co = cos(angle);
+    float si = sin(angle);
+    return mat2(vec2(co, si), vec2(-si, co));
+}
 
-//#define ANGLE_VISUALIZE
-
-subroutine(renderPassType)
-void strokeMapping() {
-    // Discretize Angle & Blending
-    
-    // 0 < angle < pi
-//    float angle = acos(texture(pdTex, texCoords).x);
-    vec3 pd = texture(pdTexture,texCoord).xyz;
-    pd = (viewMat * vec4(pd, 0)).xyz;
-    
-    float angle = pd.x == 0 ? PI/2 : atan(pd.y, pd.x); // [-pi, pi]
-    angle = angle * sign(angle); // [0, pi]
-    
-#ifdef ANGLE_VISUALIZE
-    float normAngle = (angle) / (PI);
-    strokeMappedColor = vec4(hsv2rgb(vec3(normAngle, 1, 1)), 1);
-    return;
-#endif
-    
+vec3 quantizedAndBlendedColor(int Q_LEVEL, float angle) {
     // split pi into same-width Q_LEVEL bins.
     float qd = PI / float(Q_LEVEL);
     
@@ -243,54 +228,98 @@ void strokeMapping() {
     
     float lDiff = angle - qxLevel * qd;
     float rDiff = qd - lDiff;
-    float dixAngle = qxLevel * qd;
     float dilAngle = qlLevel * qd;
+    float dixAngle = qxLevel * qd;
     float dirAngle = qrLevel * qd;
-    float blendedAngle = (dixAngle * qd + dilAngle * lDiff + dirAngle * rDiff) / (2 * qd);
-//    return vec4(angle / 3.141592); // Original Angle
-//    return vec4(float(qxLevel) / Q_LEVEL); // Quantized Angle
-//    return vec4(blendedAngle / 3.141952);
     
+    // mix weight l, x, r
+    float wl = 1/(dilAngle - angle);
+    float wx = 1/(angle - dixAngle);
+    float wr = 1/(angle - dirAngle);
+    float wsum = wl+wx+wr;
     
-    // Using TAM
+    // rotated texture l, x, r
+//    vec2 tc = texture(texCoordTexture, texCoord).xy;
+    vec2 tc  = texCoord.xy;
+    vec2 rtl = texRotateMat(-dilAngle) * tc*5;
+    vec2 rtx = texRotateMat(-dixAngle) * tc*5;
+    vec2 rtr = texRotateMat(-dirAngle) * tc*5;
     
-    float tone = texture(phongTexture, texCoord).x; // 0 dark, 1 light
-
-//    vec2 texCoord;
-//    texCoord.y = asin(N.y) / 3.141592 * k;
-//    texCoord.x = atan(N.x, N.z) / 3.141592 * k;
-
-    vec3 color1, color2;
+    // stroke l, x, r
+    float stl = wl/wsum;
+    float stx = wx/wsum;
+    float str = wr/wsum;
     
-    float co = cos(blendedAngle);
-    float si = sin(blendedAngle);
-    mat2 rot = mat2(vec2(co, si), vec2(-si, co));
-    vec2 rotatedTexCoords = rot * texCoord * 5;
-
-    color1 = texture(tam0, rotatedTexCoords).rgb;
-    color2 = texture(tam1, rotatedTexCoords).rgb;
-
-    float tone2 = 1 - tone;
-
-    int i;
-    for (i = 1; i < 7; i++)
-    {
-        if (tone2 < t[i])
-            break;
+    float tone = 1-texture(phongTexture, texCoord).x;
+    int tlevel = int(floor(tone * 6));
+//    strokeMappedColor = vec4(vec3(max(floor(tone*6),0)/6), 1);
+//    return;
+    if(tlevel < 1) {
+        stl *= 1;
+        stx *= 1;
+        str *= texture(tam0, rtl).r;
+    } else if(tlevel == 1) {
+        stl *= 1;
+        stx *= texture(tam0, rtx).r;
+        str *= texture(tam0, rtr).g;
+    } else if(tlevel == 2) {
+        stl *= texture(tam0, rtl).r;
+        stx *= texture(tam0, rtx).g;
+        str *= texture(tam0, rtr).b;
+    } else if(tlevel == 3) {
+        stl *= texture(tam0, rtl).g;
+        stx *= texture(tam0, rtx).b;
+        str *= texture(tam1, rtr).r;
+    } else if(tlevel == 4) {
+        stl *= texture(tam0, rtl).b;
+        stx *= texture(tam1, rtx).r;
+        str *= texture(tam1, rtr).g;
+    } else if(tlevel == 5) {
+        stl *= texture(tam1, rtl).r;
+        stx *= texture(tam1, rtx).g;
+        str *= texture(tam1, rtr).b;
+    } else {
+        stl *= texture(tam1, rtl).g;
+        stx *= texture(tam1, rtx).b;
+        str *= 0;
     }
-    float right = (tone2 - t[i - 1]) * 6; // right
-    float left = 1.0 - right;
-    float ratioArray[7] = float[7](0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
-    ratioArray[i - 1] = left;
-    ratioArray[i] = right;
+    
+    return vec3(stl+stx+str);
+}
 
-    vec3 ratio1 = vec3(ratioArray[1], ratioArray[2], ratioArray[3]);
-    vec3 ratio2 = vec3(ratioArray[4], ratioArray[5], ratioArray[6]);
+uniform mat4 viewMat;
+uniform mat4 projMat;
 
-    vec3 blended = 1 - vec3(dot(1 - color1, ratio1) + dot(1 - color2, ratio2));
+//#define ANGLE_VISUALIZE
 
-    strokeMappedColor = vec4(blended, 1);
-//    strokeMappedColor = vec4(vec3(angle / 3.141592), 1);
+subroutine(renderPassType)
+void strokeMapping() {
+    // Discretize Angle & Blending
+    
+    vec3 pd  = texture(pdTexture,texCoord).xyz;
+    vec3 pos = texture(positionTexture,texCoord).xyz;
+    vec4 vpd  = projMat * viewMat * vec4(pos+pd, 1);
+    vec4 vpos = projMat * viewMat * vec4(pos, 1);
+    pd  = vpd.xyz / vpd.w;
+    pos = vpos.xyz / vpos.w;
+    pd = (pd - pos);
+    
+    float angle = pd.x == 0 ? PI/2 : atan(pd.y, pd.x); // [-pi, pi]
+//    angle = angle * sign(angle); // [0, pi]
+    if(angle < 0) angle = PI+angle;
+    
+    
+#ifdef ANGLE_VISUALIZE
+    float normAngle = (angle) / (PI);
+    strokeMappedColor = vec4(hsv2rgb(vec3(normAngle, 1, 1)), 1);
+    return;
+#endif
+    
+    vec3 q1 = quantizedAndBlendedColor(QUANTIZATION_LEVEL, angle);
+    vec3 q2 = quantizedAndBlendedColor(QUANTIZATION_LEVEL/2, angle);
+    
+    strokeMappedColor = vec4((q1+q2)/2, 1);
+    return;
 }
 
 subroutine(renderPassType)

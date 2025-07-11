@@ -2,6 +2,7 @@
 
 layout (location = 0) in vec3 in_Position;
 layout (location = 1) in vec3 in_Normal;
+layout (location = 2) in vec2 in_TexCoord;
 
 uniform mat4 modelMat;
 uniform mat4 viewMat;
@@ -11,6 +12,7 @@ out vec3 worldNormal;
 out vec3 worldPosition;
 out vec3 viewPosition;
 out vec3 viewNormal;
+out vec2 texCoord;
 
 void main()
 {
@@ -22,4 +24,5 @@ void main()
     worldNormal = in_Normal;
     viewPosition = viewPos.xyz / viewPos.w;
     viewNormal = (viewMat * vec4(worldNormal, 0)).xyz;
+    texCoord = in_TexCoord;
 }

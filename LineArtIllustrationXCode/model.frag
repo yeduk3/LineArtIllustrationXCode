@@ -4,11 +4,13 @@ in vec3 worldNormal;
 in vec3 worldPosition;
 in vec3 viewPosition;
 in vec3 viewNormal;
+in vec2 texCoord;
 
 //out vec4 fragColor;
 layout(location = 0) out vec4 positionColor;
 layout(location = 1) out vec4 normalColor;
 layout(location = 2) out vec4 phongColor;
+layout(location = 3) out vec4 texCoordColor;
 
 // lighting
 uniform vec3 lightPosition;
@@ -19,7 +21,7 @@ uniform float shininess;
 uniform mat4 viewMat;
 
 
-void positionNormalPhong() {
+void positionNormalPhongTex() {
     positionColor = vec4(worldPosition, 1);
     normalColor = vec4(normalize(worldNormal), 1);
     
@@ -37,10 +39,14 @@ void positionNormalPhong() {
 
     vec3 color = ambient + diffuse + specular;
 
-    phongColor = vec4(pow(color, vec3(1 / 2.2)), 1);
+    // Square the intensity to emphasize the ratio of brightness differences
+    // Lee, 2006
+    phongColor = vec4(pow(color, vec3(2 / 2.2)), 1);
+    
+    texCoordColor = vec4(texCoord, 0, 1);
 }
 
 void main()
 {
-    positionNormalPhong();
+    positionNormalPhongTex();
 }

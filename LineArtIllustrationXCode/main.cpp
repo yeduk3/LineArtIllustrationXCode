@@ -22,6 +22,8 @@ GLuint umbilicSovedPD;
 
 const int SMOOTHCOUNT = 5;
 
+//#define HUMAN
+
 void keyCallback(GLFWwindow *window, int key, int scancode, int action, int mods)
 {
     if (key == GLFW_KEY_N && action == GLFW_PRESS) {
@@ -54,6 +56,10 @@ void keyCallback(GLFWwindow *window, int key, int scancode, int action, int mods
     }
     else if (key == GLFW_KEY_A && action == GLFW_PRESS) {
         finalTexture = fquadFbo.textureIDs[6];
+        std::cout << "Angle Texture" << std::endl;
+    }
+    else if (key == GLFW_KEY_T && action == GLFW_PRESS) {
+        finalTexture = modelFbo.textureIDs[3];
         std::cout << "Angle Texture" << std::endl;
     }
     else if (key == GLFW_KEY_SPACE && action == GLFW_PRESS) {
@@ -115,17 +121,16 @@ void tamTexLoad(bool verbose = false)
 
 struct Plane : ObjData {
     Plane() {
-        vertices = {
-            {-0.5, 0, -0.5}, {-0.5, 0, 0.5}, {0.5, 0, 0.5}, {0.5, 0, -0.5}
-        };
+        vertices = { {-0.5, 0, -0.5}, {-0.5, 0, 0.5}, {0.5, 0, 0.5}, {0.5, 0, -0.5} };
         nVertices = 6;
         
-        syncedNormals = std::vector<glm::vec3>(6, {0,1,0});
-        nSyncedNormals = 6;
+        syncedNormals = std::vector<glm::vec3>(4, {0,1,0});
+        nSyncedNormals = 4;
         
-        elements3 = {
-            {0, 1, 2}, {0, 2, 3}
-        };
+        texCoords = { {0, 0}, {0, 1}, {1, 1}, {1, 0} };
+        nTextures = 4;
+        
+        elements3 = { {0, 1, 2}, {0, 2, 3} };
         nElements3 = 2;
     }
 };
@@ -133,20 +138,23 @@ Plane plane;
 
 void init() {
 //    pdInit(yglWindow->getGLFWWindow());
-    camera.setPosition({0, 0, 5});
+    camera.setPosition({0, 0, 7});
     camera.glfwSetCallbacks(yglWindow->getGLFWWindow());
     
     tamTexLoad();
     glErr("after tamTexLoad(): TAM Texture Loading");
     
-    obj.loadObject("obj", "UtahTeapot.obj");
+    obj.loadObject("obj", "teapot.obj");
     obj.adjustCenter(true);
     obj.generateBuffers();
     glErr("after generateBuffer(): teapot object");
     
+#ifdef HUMAN
     human.loadObject("obj", "human.obj");
     human.adjustCenter(true);
     human.generateBuffers();
+    glErr("after generateBuffer(): human object");
+#endif
     
     plane.generateBuffers();
     glErr("after generateBuffer(): plane object");
@@ -157,7 +165,7 @@ void init() {
     
     modelFbo.init(yglWindow->getGLFWWindow());
     modelFbo.attachRenderBuffer(GL_DEPTH24_STENCIL8);
-    modelFbo.attachTexture2D(3, GL_RGBA32F);
+    modelFbo.attachTexture2D(4, GL_RGBA32F);
     glErr("after glFramebufferTexture2D: dataFB, dataTexture");
     
     fquadFbo.init(yglWindow->getGLFWWindow());
@@ -206,19 +214,21 @@ void render() {
     modelShader.setUniform("lightPosition", lightPosition);
     modelShader.setUniform("eyePosition", eyePosition);
     modelShader.setUniform("lightColor", lightColor);
-    modelShader.setUniform("diffuseColor", obj.materialData[0].diffuseColor);
-    modelShader.setUniform("specularColor", obj.materialData[0].specularColor);
+    modelShader.setUniform("diffuseColor", glm::vec3(1, 1, 1)/*obj.materialData[0].diffuseColor*/);
+    modelShader.setUniform("specularColor", glm::vec3(0.3,0.3,0.3)/*obj.materialData[0].specularColor*/);
     modelShader.setUniform("shininess", shininess);
     
     glm::mat4 modelMat = glm::scale(glm::translate(glm::mat4(1), glm::vec3(-1.5, 0, 0)), glm::vec3(5, 5, 5));
     modelShader.setUniform("modelMat", modelMat);
     obj.render();
     
-    modelMat = glm::scale(glm::translate(glm::mat4(1), glm::vec3(1.5, 0, 0)), glm::vec3(2.5, 2.5, 2.5));
-    modelShader.setUniform("modelMat", modelMat);
-    human.render();
+#ifdef HUMAN
+//    modelMat = glm::scale(glm::translate(glm::mat4(1), glm::vec3(1.5, 0, 0)), glm::vec3(2.5, 2.5, 2.5));
+//    modelShader.setUniform("modelMat", modelMat);
+//    human.render();
+#endif
     
-    modelMat = glm::scale(glm::translate(glm::mat4(1), glm::vec3(0, -1.3, 0)), glm::vec3(10, 0, 10));
+    modelMat = glm::scale(glm::translate(glm::mat4(1), glm::vec3(0, -1.3, 0)), glm::vec3(100, 0, 100));
     modelShader.setUniform("modelMat", modelMat);
     plane.render();
     
@@ -293,19 +303,23 @@ void render() {
         prev = fquadFbo.textureIDs[4+(i%2)];
     }
     
-    // =================================== Angle Quatization
+    // =================================== Stroke Mapping
     
     fquadShader.setUniform("viewMat", viewMat);
+    fquadShader.setUniform("projMat", projMat);
     fquadShader.setTexture("pdTexture", 0, prev);
     fquadShader.setTexture("tam0", 1, TAMTexture[0]);
     fquadShader.setTexture("tam1", 2, TAMTexture[1]);
+    fquadShader.setTexture("phongTexture", 3, modelFbo.textureIDs[2]);
+    fquadShader.setTexture("texCoordTexture", 4, modelFbo.textureIDs[3]);
+    fquadShader.setTexture("positionTexture", 5, modelFbo.textureIDs[0]);
     fquadShader.setSubroutine("strokeMapping");
     fquadFbo.setDrawBuffers({6});
     fquadFbo.renderFullScreenQuad();
     
     // =================================== result
     
-    if(finalTexture == -1) finalTexture = umbilicSovedPD;
+    if(finalTexture == -1) finalTexture = fquadFbo.textureIDs[6];
     fquadShader.setTexture("tex", 0, finalTexture);
     fquadShader.setSubroutine("result");
     
